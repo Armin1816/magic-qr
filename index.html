@@ -3,23 +3,13 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Final Fix</title>
+    <title>AR Rotation Fix</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <style>
-      #loading-screen {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: #000; z-index: 9999;
-        display: flex; justify-content: center; align-items: center; color: white;
-      }
-      .hidden { display: none !important; }
-    </style>
   </head>
   <body>
-    <div id="loading-screen"><div>در حال تنظیم مدل...</div></div>
-
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
+      mindar-image="imageTargetSrc: ./targets.mind;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
@@ -31,30 +21,23 @@
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <a-light type="ambient" intensity="0.7"></a-light>
-      <a-light type="directional" position="5 10 7" intensity="0.8"></a-light>
+      <a-light type="ambient" intensity="1"></a-light>
+      <a-light type="directional" position="5 10 7" intensity="1"></a-light>
 
-      <a-entity mindar-image-target="targetIndex: 0" id="mytarget">
+      <a-entity mindar-image-target="targetIndex: 0">
         
-        <a-entity animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true">
+        <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
           
-          <a-gltf-model 
-            src="#avatarModel" 
-            rotation="90 0 0" 
-            position="0 0 0" 
-            scale="0.1 0.1 0.1">
-          </a-gltf-model>
+            <a-gltf-model 
+              src="#avatarModel" 
+              position="0 0 0" 
+              scale="0.5 0.5 0.5"
+              rotation="90 0 0"> 
+            </a-gltf-model>
 
         </a-entity>
 
       </a-entity>
     </a-scene>
-
-    <script>
-      const scene = document.querySelector('a-scene');
-      const loadingScreen = document.getElementById('loading-screen');
-      scene.addEventListener('loaded', () => { setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); });
-    </script>
   </body>
 </html>
-
