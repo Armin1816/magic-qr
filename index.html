@@ -3,55 +3,117 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Global Axis Fix</title>
+    <title>AR با محور جهانی ثابت</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      .hidden { display: none !important; }
-      #info {
-        position: fixed; top: 20px; left: 0; width: 100%; 
-        color: white; text-align: center; background: rgba(0,0,0,0.5); padding: 10px;
-        font-family: sans-serif; z-index: 999;
+      #loading-screen {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #000; z-index: 9999;
+        display: flex; justify-content: center; align-items: center; color: white; font-size: 1.5em;
       }
+      .hidden { display: none !important; }
     </style>
   </head>
   <body>
-    <div id="info">قرمز: X | سبز: Y | آبی: Z <br> مدل را با این محورها تراز کنید</div>
+    <div id="loading-screen"><div>در حال بارگذاری... (محور جهانی ثابت)</div></div>
 
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
-      vr-mode-ui="enabled: false" 
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 1000;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
       device-orientation-permission-ui="enabled: false">
-      
+
       <a-assets>
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+      <!-- نورپردازی -->
       <a-light type="ambient" intensity="1"></a-light>
       <a-light type="directional" position="5 10 7" intensity="1"></a-light>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        
-        <a-box position="0.5 0 0" scale="1 0.01 0.01" color="red"></a-box>
-        <a-box position="0 0.5 0" scale="0.01 1 0.01" color="green"></a-box>
-        <a-box position="0 0 0.5" scale="0.01 0.01 1" color="blue"></a-box>
+      <!-- این entity جهانی ماست که فقط یک بار ست میشه -->
+      <a-entity id="world-origin"></a-entity>
 
-        <a-entity id="global-wrapper">
-            
-            <a-gltf-model 
-              src="#avatarModel" 
-              position="0 0 0" 
-              scale="0.1 0.1 0.1"
-              rotation="0 0 0"> 
-            </a-gltf-model>
+      <!-- محورهای جهانی ثابت (همیشه در یک نقطه می‌مونن) -->
+      <a-entity id="global-axes" visible="true">
+        <a-box position="0.5 0 0" scale="1 0.02 0.02" color="red"></a-box>
+        <a-text value="X جهانی" position="1.1 0 0" color="red" scale="2 2 2"></a-text>
 
-        </a-entity>
+        <a-box position="0 0.5 0" scale="0.02 1 0.02" color="green"></a-box>
+        <a-text value="Y جهانی" position="0 1.1 0" color="green" scale="2 2 2"></a-text>
 
+        <a-box position="0 0 0.5" scale="0.02 0.02 1" color="blue"></a-box>
+        <a-text value="Z جهانی" position="0 0 1.1" color="blue" scale="2 2 2"></a-text>
       </a-entity>
+
+      <!-- تارگت اصلی MindAR -->
+      <a-entity mindar-image-target="targetIndex: 0" id="target0">
+        <!-- مدل آواتار (حالا نسبت به world-origin قرار می‌گیره) -->
+        <a-gltf-model
+          src="#avatarModel"
+          position="0 0 0"
+          scale="0.1 0.1 0.1"
+          rotation="0 0 0"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear">
+        </a-gltf-model>
+      </a-entity>
+
     </a-scene>
+
+    <script>
+      AFRAME.registerComponent('fix-world-origin', {
+        init: function () {
+          const worldOrigin = document.querySelector('#world-origin');
+          const globalAxes = document.querySelector('#global-axes');
+          let originFixed = false;
+
+          this.el.addEventListener('targetFound', () => {
+            if (!originFixed) {
+              // اولین باری که تارگت پیدا شد، موقعیت فعلی anchor رو به عنوان مبدا جهانی فیکس می‌کنیم
+              const targetEl = document.querySelector('#target0');
+              const poseMatrix = targetEl.object3D.matrixWorld;
+
+              // world-origin رو دقیقاً روی موقعیت فعلی تارگت می‌ذاریم
+              worldOrigin.object3D.position.setFromMatrixPosition(poseMatrix);
+              worldOrigin.object3D.rotation.setFromRotationMatrix(poseMatrix);
+              worldOrigin.object3D.scale.set(1, 1, 1);
+              worldOrigin.object3D.updateMatrixWorld();
+
+              // همه چیزهایی که می‌خوایم جهانی باشن رو فرزند world-origin می‌کنیم
+              globalAxes.setAttribute('position', '0 0 0');
+              globalAxes.object3D.parent = worldOrigin.object3D;
+
+              // مدل رو هم به world-origin منتقل می‌کنیم (اختیاری)
+              const model = targetEl.querySelector('a-gltf-model');
+              if (model) {
+                worldOrigin.object3D.add(model.object3D);
+              }
+
+              console.log('محور جهانی فیکس شد! از این به بعد ثابت می‌مونه');
+              originFixed = true;
+            }
+          });
+
+          // اگر تارگت گم شد، محور جهانی همچنان ثابت می‌مونه
+          this.el.addEventListener('targetLost', () => {
+            console.log('تارگت گم شد ولی محور جهانی همچنان ثابته');
+          });
+        }
+      });
+
+      // کامپوننت رو به تارگت وصل می‌کنیم
+      document.querySelector('#target0').setAttribute('fix-world-origin', '');
+      
+      // مخفی کردن صفحه لودینگ
+      const scene = document.querySelector('a-scene');
+      const loadingScreen = document.getElementById('loading-screen');
+      scene.addEventListener('loaded', () => {
+        setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000);
+      });
+    </script>
   </body>
 </html>
