@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Global Axis Fix</title>
+    <title>AR Fixed Orientation</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
@@ -29,7 +29,7 @@
     </div>
 
     <!-- وضعیت نمایش -->
-    <div id="status">محورهای رنگی ثابت هستند (Global) - مدل می‌چرخد</div>
+    <div id="status">مدل فیکس شده و عمود بر تصویر است</div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets.mind;" 
@@ -39,7 +39,6 @@
       device-orientation-permission-ui="enabled: false">
       
       <a-assets>
-        <!-- مدل سه بعدی -->
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
 
@@ -48,45 +47,40 @@
       <a-light type="ambient" intensity="1"></a-light>
       <a-light type="directional" position="5 10 7" intensity="1.5"></a-light>
 
-      <!-- تارگت اصلی (مرکز دنیای QR Code) -->
       <a-entity mindar-image-target="targetIndex: 0">
         
         <!-- ================================================== -->
-        <!-- بخش ۱: سیستم مختصات گلوبال (ثابت روی کاغذ)       -->
-        <!-- این بخش هیچوقت نمی‌چرخد و نقش راهنما را دارد     -->
+        <!-- محورهای راهنما (Global Axes) -->
+        <!-- X: قرمز (راست تصویر) -->
+        <!-- Y: سبز (بالای تصویر) -->
+        <!-- Z: آبی (عمود بر تصویر - بیرون زده) -->
         <!-- ================================================== -->
         <a-entity id="global-axes-system">
-            <!-- محور X (قرمز) -->
             <a-box position="0.6 0 0" scale="1.2 0.01 0.01" color="red"></a-box>
-            <a-text value="Global X" position="1.3 0 0" color="red" align="center" scale="0.5 0.5 0.5"></a-text>
+            <a-text value="X" position="1.3 0 0" color="red" align="center" scale="0.5 0.5 0.5"></a-text>
 
-            <!-- محور Y (سبز) -->
             <a-box position="0 0.6 0" scale="0.01 1.2 0.01" color="green"></a-box>
-            <a-text value="Global Y" position="0 1.3 0" color="green" align="center" scale="0.5 0.5 0.5"></a-text>
+            <a-text value="Y" position="0 1.3 0" color="green" align="center" scale="0.5 0.5 0.5"></a-text>
 
-            <!-- محور Z (آبی - عمود بر صفحه) -->
             <a-box position="0 0 0.6" scale="0.01 0.01 1.2" color="blue"></a-box>
-            <a-text value="Global Z" position="0 0 1.3" color="blue" align="center" scale="0.5 0.5 0.5"></a-text>
+            <a-text value="Z" position="0 0 1.3" color="blue" align="center" scale="0.5 0.5 0.5"></a-text>
             
-            <!-- نقطه مرکز (Origin) -->
             <a-sphere radius="0.03" color="white"></a-sphere>
         </a-entity>
 
 
         <!-- ================================================== -->
-        <!-- بخش ۲: ظرف مدل (Model Container)                 -->
-        <!-- ما این ظرف را می‌چرخانیم، نه خود مدل را           -->
-        <!-- این باعث می‌شود چرخش حول محورهای گلوبال انجام شود -->
+        <!-- کانتینر مدل (اصلاح شده) -->
+        <!-- rotation="90 0 0" باعث می‌شود محور Y مدل (سر مدل) -->
+        <!-- در راستای محور Z تصویر (عمود بر کاغذ) قرار گیرد. -->
         <!-- ================================================== -->
-        <a-entity id="model-container" position="0 0 0">
+        <a-entity id="model-container" position="0 0 0" rotation="90 0 0">
             
-            <!-- مدل اصلی داخل ظرف قرار دارد -->
-            <!-- اگر مدل نیاز به اصلاح پوزیشن اولیه دارد، اینجا انجام دهید -->
             <a-gltf-model 
               src="#avatarModel" 
               position="0 0 0" 
-              scale="0.1 0.1 0.1"
-              rotation="0 0 0"> 
+              scale="0.1 0.1 0.1"> 
+              <!-- rotation داخلی مدل صفر است، چرخش را به کانتینر دادیم -->
             </a-gltf-model>
 
         </a-entity>
@@ -97,35 +91,11 @@
     <script>
       const scene = document.querySelector('a-scene');
       const loadingScreen = document.getElementById('loading-screen');
-      const modelContainer = document.getElementById('model-container');
 
-      // حذف لودینگ اسکرین بعد از لود شدن
+      // فقط حذف لودینگ اسکرین (بدون انیمیشن اضافی)
       scene.addEventListener('loaded', () => { 
         setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); 
       });
-
-      // ----------------------------------------------------------------
-      // شبیه‌سازی چرخش روی محور گلوبال
-      // در اینجا ما کانتینر را می‌چرخانیم، بنابراین مدل حول محور Z (عمود بر کاغذ) می‌چرخد
-      // انگار که روی صفحه گردان قرار دارد
-      // ----------------------------------------------------------------
-      let rotationZ = 0;
-      function animate() {
-        rotationZ += 1; // سرعت چرخش
-        if (modelContainer) {
-            // چرخش حول محور Z (عمود بر QR Code)
-            // اگر بخواهی مدل دور خودش بچرخد (مثل فرفره روی زمین) این گزینه مناسب است
-            modelContainer.setAttribute('rotation', `0 0 ${rotationZ}`);
-            
-            // نکته: اگر بخواهی مدل به صورت ایستاده بچرخد (حول محور Y تصویر)، کد زیر را استفاده کن:
-            // modelContainer.setAttribute('rotation', `0 ${rotationZ} 0`);
-        }
-        requestAnimationFrame(animate);
-      }
-      
-      // شروع انیمیشن
-      animate();
-
     </script>
   </body>
 </html>
