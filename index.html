@@ -19,7 +19,6 @@
             background: #1a1a2e;
         }
         
-        /* صفحه لودینگ */
         #loading-screen {
             position: fixed;
             top: 0;
@@ -78,7 +77,6 @@
             background: rgba(255, 255, 255, 0.2);
             border-radius: 20px;
             padding: 4px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
         
         .progress-bar {
@@ -86,7 +84,6 @@
             background: rgba(255, 255, 255, 0.3);
             border-radius: 16px;
             overflow: hidden;
-            position: relative;
         }
         
         .progress-fill {
@@ -95,7 +92,6 @@
             width: 0%;
             transition: width 0.4s ease;
             border-radius: 16px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
         }
         
         .progress-text {
@@ -105,14 +101,6 @@
             font-weight: 600;
         }
         
-        .file-size-info {
-            font-size: 12px;
-            opacity: 0.7;
-            margin-top: 15px;
-            text-align: center;
-        }
-        
-        /* پیام‌های راهنما */
         #instruction {
             position: fixed;
             top: 20px;
@@ -128,23 +116,24 @@
             max-width: 85%;
             backdrop-filter: blur(15px);
             border: 2px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
             display: none;
-            animation: slideDown 0.5s ease;
         }
         
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
+        #debug-info {
+            position: fixed;
+            bottom: 100px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            border-radius: 5px;
+            z-index: 999;
+            max-width: 90%;
+            display: none;
         }
         
-        /* دکمه‌های کنترل */
         .controls {
             position: fixed;
             bottom: 25px;
@@ -171,17 +160,12 @@
             cursor: pointer;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         
         .control-btn:active {
             transform: scale(0.9);
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
         }
         
-        /* پیام خطا */
         #error-message {
             position: fixed;
             top: 50%;
@@ -195,35 +179,10 @@
             z-index: 10000;
             text-align: center;
             max-width: 85%;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            animation: popIn 0.3s ease;
-        }
-        
-        @keyframes popIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.8);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
-            }
-        }
-        
-        .error-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        .error-text {
-            font-size: 14px;
-            opacity: 0.9;
         }
     </style>
 </head>
 <body>
-    <!-- صفحه لودینگ -->
     <div id="loading-screen">
         <div class="spinner"></div>
         <div class="loading-text" id="loading-title">در حال بارگذاری...</div>
@@ -234,25 +193,18 @@
             </div>
             <div class="progress-text" id="progress-text">0%</div>
         </div>
-        <div class="file-size-info">⏳ در حال دانلود مدل سه‌بعدی (ممکن است چند لحظه طول بکشد)</div>
     </div>
     
-    <!-- پیام راهنما -->
     <div id="instruction">📱 دوربین را به سمت تصویر هدف نگه دارید</div>
+    <div id="error-message"></div>
+    <div id="debug-info"></div>
     
-    <!-- پیام خطا -->
-    <div id="error-message">
-        <div class="error-title">⚠️ خطا</div>
-        <div class="error-text" id="error-text"></div>
-    </div>
-    
-    <!-- دکمه‌های کنترل -->
     <div class="controls" id="controls">
-        <button class="control-btn" id="reset-btn" title="ریست">🔄</button>
-        <button class="control-btn" id="info-btn" title="راهنما">ℹ️</button>
+        <button class="control-btn" id="toggle-debug">🐛</button>
+        <button class="control-btn" id="reset-btn">🔄</button>
+        <button class="control-btn" id="info-btn">ℹ️</button>
     </div>
     
-    <!-- صحنه AR -->
     <a-scene
         mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.001; filterBeta: 0.1; warmupTolerance: 10; missTolerance: 10"
         color-space="sRGB"
@@ -263,50 +215,68 @@
         id="scene"
         loading-screen="enabled: false">
         
-        <!-- دارایی‌ها با تایم‌اوت طولانی‌تر -->
         <a-assets timeout="120000">
             <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
         </a-assets>
         
-        <!-- نورپردازی بهتر -->
-        <a-light type="ambient" intensity="0.9"></a-light>
-        <a-light type="directional" intensity="0.6" position="2 2 1"></a-light>
-        <a-light type="hemisphere" intensity="0.4" groundColor="#ffffff"></a-light>
+        <!-- نورپردازی قوی‌تر -->
+        <a-light type="ambient" intensity="1.5"></a-light>
+        <a-light type="directional" intensity="1" position="1 1 1"></a-light>
+        <a-light type="directional" intensity="0.5" position="-1 1 -1"></a-light>
+        <a-light type="point" intensity="1" position="0 2 0"></a-light>
         
-        <!-- دوربین -->
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
-        <!-- هدف تصویری -->
-        <a-entity mindar-image-target="targetIndex: 0">
-            <!-- مدل سه‌بعدی -->
+        <a-entity mindar-image-target="targetIndex: 0" id="target">
+            
+            <!-- مدل اصلی با scale بزرگتر -->
             <a-gltf-model 
-                id="model"
+                id="mainModel"
                 rotation="0 0 0" 
                 position="0 0 0" 
-                scale="0.5 0.5 0.5" 
+                scale="1 1 1"
                 src="#avatarModel"
-                animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true"
-                animation__scale="property: scale; to: 0.55 0.55 0.55; dur: 2000; dir: alternate; loop: true; easing: easeInOutSine"
-                visible="false">
+                animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true"
+                visible="true">
             </a-gltf-model>
+            
+            <!-- شکل تست (مکعب قرمز) - برای اطمینان از کارکرد AR -->
+            <a-box 
+                id="testBox"
+                position="0 0.5 0" 
+                rotation="0 45 0" 
+                scale="0.3 0.3 0.3"
+                color="#ff0000"
+                animation="property: rotation; to: 0 405 0; dur: 3000; easing: linear; loop: true"
+                visible="true">
+            </a-box>
             
             <!-- حلقه نوری -->
             <a-ring
-                position="0 -0.1 0"
+                position="0 0 0"
                 rotation="-90 0 0"
-                radius-inner="0.3"
-                radius-outer="0.5"
+                radius-inner="0.4"
+                radius-outer="0.7"
                 color="#667eea"
-                opacity="0.4"
+                opacity="0.6"
                 animation="property: scale; to: 1.3 1.3 1.3; dur: 1500; dir: alternate; loop: true"
-                visible="false"
-                id="ring">
+                visible="true">
             </a-ring>
+            
+            <!-- متن تست -->
+            <a-text 
+                value="AR Working!" 
+                position="0 1 0" 
+                align="center" 
+                color="#00ff00"
+                scale="2 2 2"
+                visible="true">
+            </a-text>
+            
         </a-entity>
     </a-scene>
     
     <script>
-        // متغیرهای اصلی
         const loadingScreen = document.getElementById('loading-screen');
         const progressBar = document.getElementById('progress');
         const progressText = document.getElementById('progress-text');
@@ -314,206 +284,183 @@
         const loadingSubtitle = document.getElementById('loading-subtitle');
         const instruction = document.getElementById('instruction');
         const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
         const scene = document.getElementById('scene');
         const controls = document.getElementById('controls');
-        const model = document.getElementById('model');
-        const ring = document.getElementById('ring');
+        const debugInfo = document.getElementById('debug-info');
         
-        let currentProgress = 0;
-        let modelLoaded = false;
-        let arReady = false;
-        let targetVisible = false;
+        let debugMode = false;
+        let debugLog = [];
         
-        // تابع به‌روزرسانی پروگرس
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            debugLog.push(logMessage);
+            if (debugMode) {
+                debugInfo.innerHTML = debugLog.slice(-10).join('<br>');
+            }
+        }
+        
         function updateProgress(percent, status = '') {
-            currentProgress = Math.min(Math.max(percent, 0), 100);
-            progressBar.style.width = currentProgress + '%';
-            progressText.textContent = Math.round(currentProgress) + '%';
+            progressBar.style.width = percent + '%';
+            progressText.textContent = Math.round(percent) + '%';
+            if (status) loadingSubtitle.textContent = status;
             
-            if (status) {
-                loadingSubtitle.textContent = status;
-            }
-            
-            // پیام‌های مرحله‌ای
-            if (currentProgress < 30) {
-                loadingTitle.textContent = '⏳ در حال اتصال...';
-            } else if (currentProgress < 60) {
-                loadingTitle.textContent = '📦 در حال دانلود مدل...';
-            } else if (currentProgress < 90) {
-                loadingTitle.textContent = '🎨 در حال پردازش...';
-            } else if (currentProgress < 100) {
-                loadingTitle.textContent = '✨ تقریباً آماده است...';
-            } else {
-                loadingTitle.textContent = '✅ بارگذاری کامل شد!';
-            }
+            if (percent < 30) loadingTitle.textContent = '⏳ در حال اتصال...';
+            else if (percent < 60) loadingTitle.textContent = '📦 در حال دانلود...';
+            else if (percent < 90) loadingTitle.textContent = '🎨 در حال پردازش...';
+            else loadingTitle.textContent = '✅ آماده است!';
         }
         
-        // نمایش خطا
-        function showError(message) {
-            errorText.textContent = message;
-            errorMessage.style.display = 'block';
-            setTimeout(() => {
-                errorMessage.style.display = 'none';
-            }, 7000);
-        }
-        
-        // شروع بارگذاری
-        updateProgress(5, 'آماده‌سازی دوربین...');
+        log('🚀 App started');
+        updateProgress(10);
         
         // بارگذاری Assets
         const assets = document.querySelector('a-assets');
-        let loadStartTime = Date.now();
+        const model = document.getElementById('mainModel');
+        const testBox = document.getElementById('testBox');
+        const target = document.getElementById('target');
         
         if (assets) {
-            updateProgress(15, 'شروع دانلود فایل‌ها...');
-            
-            // شبیه‌سازی پروگرس برای فایل‌های بزرگ
-            const progressInterval = setInterval(() => {
-                if (currentProgress < 70 && !modelLoaded) {
-                    updateProgress(currentProgress + 2, 'در حال دانلود... (فایل حجیم است)');
-                }
-            }, 500);
+            updateProgress(20, 'بارگذاری مدل...');
             
             assets.addEventListener('loaded', () => {
-                clearInterval(progressInterval);
-                const loadTime = ((Date.now() - loadStartTime) / 1000).toFixed(1);
-                console.log(`✅ Assets loaded in ${loadTime}s`);
-                modelLoaded = true;
-                updateProgress(75, 'فایل‌ها بارگذاری شد ✓');
-                checkComplete();
+                log('✅ Assets loaded successfully');
+                updateProgress(70);
+                
+                // بررسی مدل
+                if (model) {
+                    model.addEventListener('model-loaded', () => {
+                        log('✅ GLB Model loaded!');
+                        log(`Model scale: ${model.getAttribute('scale').x}`);
+                        log(`Model position: ${JSON.stringify(model.getAttribute('position'))}`);
+                    });
+                    
+                    model.addEventListener('model-error', (e) => {
+                        log('❌ Model error: ' + e.detail);
+                        errorMessage.textContent = '⚠️ خطا در بارگذاری مدل GLB\nمکعب قرمز به جای آن نمایش داده می‌شود';
+                        errorMessage.style.display = 'block';
+                        setTimeout(() => errorMessage.style.display = 'none', 5000);
+                    });
+                }
             });
             
             assets.addEventListener('timeout', () => {
-                clearInterval(progressInterval);
-                console.error('❌ Assets timeout');
-                showError('زمان بارگذاری تمام شد. لطفاً اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.');
-                updateProgress(0, 'خطا در بارگذاری!');
-            });
-            
-            assets.addEventListener('error', (e) => {
-                clearInterval(progressInterval);
-                console.error('❌ Assets error:', e);
-                showError('خطا در بارگذاری فایل‌ها. لطفاً مطمئن شوید که فایل model.glb در مسیر صحیح قرار دارد.');
-                updateProgress(0, 'خطا!');
+                log('❌ Assets timeout');
+                errorMessage.textContent = '⚠️ زمان بارگذاری تمام شد\nاز مکعب تست استفاده می‌شود';
+                errorMessage.style.display = 'block';
             });
         }
         
         // آماده‌سازی AR
         scene.addEventListener('loaded', () => {
-            console.log('✅ Scene loaded');
-            updateProgress(85, 'راه‌اندازی AR...');
+            log('✅ Scene loaded');
+            updateProgress(85);
         });
         
         scene.addEventListener('renderstart', () => {
-            console.log('✅ AR System ready');
-            arReady = true;
-            updateProgress(95, 'سیستم AR آماده است');
-            checkComplete();
+            log('✅ AR System ready');
+            updateProgress(100);
+            setTimeout(() => {
+                loadingScreen.classList.add('hidden');
+                instruction.style.display = 'block';
+                controls.classList.add('visible');
+                log('🎉 App fully ready');
+            }, 800);
         });
         
-        // بررسی اتمام بارگذاری
-        function checkComplete() {
-            if (modelLoaded && arReady) {
-                updateProgress(100, '✅ همه چیز آماده است!');
-                setTimeout(() => {
-                    loadingScreen.classList.add('hidden');
-                    instruction.style.display = 'block';
-                    controls.classList.add('visible');
-                    console.log('🎉 App ready!');
-                }, 800);
-            }
-        }
-        
         // تشخیص هدف
-        scene.addEventListener('targetFound', () => {
-            console.log('🎯 Target found');
-            targetVisible = true;
-            instruction.textContent = '✅ هدف یافت شد! مدل در حال نمایش است';
+        let targetFound = false;
+        
+        scene.addEventListener('targetFound', (e) => {
+            targetFound = true;
+            log('🎯 TARGET FOUND!');
+            instruction.textContent = '✅ هدف یافت شد! باید مدل را ببینید';
             instruction.style.background = 'rgba(40, 167, 69, 0.9)';
             
-            // نمایش مدل و حلقه
-            if (model) model.setAttribute('visible', 'true');
-            if (ring) ring.setAttribute('visible', 'true');
+            // اطمینان از نمایش همه چیز
+            if (target) {
+                log('Setting all objects visible');
+                const entities = target.querySelectorAll('*');
+                entities.forEach(entity => {
+                    entity.setAttribute('visible', 'true');
+                });
+            }
+            
+            // لاگ موقعیت‌ها
+            setTimeout(() => {
+                if (model) {
+                    const scale = model.getAttribute('scale');
+                    const position = model.getAttribute('position');
+                    log(`Model visible: ${model.getAttribute('visible')}`);
+                    log(`Model scale: ${scale.x}, ${scale.y}, ${scale.z}`);
+                    log(`Model position: ${position.x}, ${position.y}, ${position.z}`);
+                }
+                if (testBox) {
+                    log(`TestBox visible: ${testBox.getAttribute('visible')}`);
+                }
+            }, 1000);
         });
         
         scene.addEventListener('targetLost', () => {
-            console.log('❌ Target lost');
-            targetVisible = false;
+            targetFound = false;
+            log('❌ Target lost');
             instruction.textContent = '📱 دوربین را به سمت تصویر هدف نگه دارید';
             instruction.style.background = 'rgba(0, 0, 0, 0.85)';
-            
-            // مخفی کردن مدل و حلقه
-            if (model) model.setAttribute('visible', 'false');
-            if (ring) ring.setAttribute('visible', 'false');
         });
         
         // دکمه‌ها
-        document.getElementById('reset-btn').addEventListener('click', () => {
-            if (confirm('آیا می‌خواهید صفحه را مجدداً بارگذاری کنید؟')) {
-                location.reload();
+        document.getElementById('toggle-debug').addEventListener('click', () => {
+            debugMode = !debugMode;
+            debugInfo.style.display = debugMode ? 'block' : 'none';
+            if (debugMode) {
+                debugInfo.innerHTML = debugLog.slice(-10).join('<br>');
             }
+            log('🐛 Debug mode: ' + debugMode);
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            if (confirm('ریست کنیم؟')) location.reload();
         });
         
         document.getElementById('info-btn').addEventListener('click', () => {
-            alert('📱 راهنمای استفاده:\n\n' +
-                  '1️⃣ دوربین را به سمت تصویر هدف (QR Code/Marker) نگه دارید\n\n' +
-                  '2️⃣ صبر کنید تا مدل سه‌بعدی ظاهر شود\n\n' +
-                  '3️⃣ مدل به صورت خودکار می‌چرخد و حرکت می‌کند\n\n' +
-                  '4️⃣ با دو انگشت می‌توانید مدل را بزرگ/کوچک کنید\n\n' +
-                  '⚠️ اگر مدل نمایش داده نشد:\n' +
-                  '• فاصله دوربین را تنظیم کنید\n' +
-                  '• نور محیط را بهتر کنید\n' +
-                  '• از دکمه 🔄 استفاده کنید');
+            alert('📱 راهنما:\n\n' +
+                  '1. دوربین را روی تصویر هدف نگه دارید\n\n' +
+                  '2. یک مکعب قرمز و متن سبز باید ببینید\n\n' +
+                  '3. اگر مکعب را دیدید یعنی AR کار می‌کند\n\n' +
+                  '4. اگر مدل اصلی نمایش نداد، مشکل از فایل GLB است\n\n' +
+                  '🐛 دکمه debug را بزنید برای مشاهده لاگ‌ها');
         });
         
-        // قابلیت زوم با دو انگشت
+        // زوم
         let initialDistance = 0;
-        let currentScale = 0.5;
+        let currentScale = 1;
         
         document.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 2 && targetVisible && model) {
-                initialDistance = getDistance(e.touches[0], e.touches[1]);
+            if (e.touches.length === 2 && targetFound && model) {
+                initialDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
             }
         });
         
         document.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 2 && targetVisible && model && initialDistance > 0) {
+            if (e.touches.length === 2 && targetFound && model && initialDistance > 0) {
                 e.preventDefault();
-                const currentDistance = getDistance(e.touches[0], e.touches[1]);
-                const scaleDelta = (currentDistance - initialDistance) * 0.001;
-                currentScale = Math.max(0.2, Math.min(2, currentScale + scaleDelta));
+                const currentDistance = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const scaleDelta = (currentDistance - initialDistance) * 0.002;
+                currentScale = Math.max(0.3, Math.min(5, currentScale + scaleDelta));
                 model.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+                log(`Scale changed to: ${currentScale.toFixed(2)}`);
                 initialDistance = currentDistance;
             }
         }, { passive: false });
         
-        function getDistance(touch1, touch2) {
-            const dx = touch1.clientX - touch2.clientX;
-            const dy = touch1.clientY - touch2.clientY;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-        
-        // جلوگیری از رفرش با Pull-to-refresh
-        let startY = 0;
-        document.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-        });
-        
-        document.addEventListener('touchmove', (e) => {
-            const y = e.touches[0].clientY;
-            if (y > startY && window.scrollY === 0) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-        
-        // مدیریت خطاهای کلی
-        window.addEventListener('error', (e) => {
-            console.error('💥 Runtime error:', e);
-        });
-        
-        // حذف تایم‌اوت - اجازه بارگذاری نامحدود
-        console.log('🚀 AR App initialized - Large file mode enabled');
+        log('✅ All event listeners registered');
     </script>
 </body>
 </html>
