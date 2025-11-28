@@ -64,56 +64,53 @@
 
     </a-scene>
 
-    <script>
-      AFRAME.registerComponent('fix-world-origin', {
-        init: function () {
-          const worldOrigin = document.querySelector('#world-origin');
-          const globalAxes = document.querySelector('#global-axes');
-          let originFixed = false;
+<script>
+  AFRAME.registerComponent('fix-world-origin', {
+    init: function () {
+      const worldOrigin = document.querySelector('#world-origin');
+      const globalAxes = document.querySelector('#global-axes');
+      let originFixed = false;
 
-          this.el.addEventListener('targetFound', () => {
-            if (!originFixed) {
-              // اولین باری که تارگت پیدا شد، موقعیت فعلی anchor رو به عنوان مبدا جهانی فیکس می‌کنیم
-              const targetEl = document.querySelector('#target0');
-              const poseMatrix = targetEl.object3D.matrixWorld;
+      this.el.addEventListener('targetFound', () => {
+        if (!originFixed) {
+          const targetEl = document.querySelector('#target0');
+          const poseMatrix = targetEl.object3D.matrixWorld.clone();
 
-              // world-origin رو دقیقاً روی موقعیت فعلی تارگت می‌ذاریم
-              worldOrigin.object3D.position.setFromMatrixPosition(poseMatrix);
-              worldOrigin.object3D.rotation.setFromRotationMatrix(poseMatrix);
-              worldOrigin.object3D.scale.set(1, 1, 1);
-              worldOrigin.object3D.updateMatrixWorld();
+          // موقعیت و چرخش فعلی تارگت رو می‌گیریم
+          worldOrigin.object3D.position.setFromMatrixPosition(poseMatrix);
+          worldOrigin.object3D.rotation.setFromRotationMatrix(poseMatrix);
 
-              // همه چیزهایی که می‌خوایم جهانی باشن رو فرزند world-origin می‌کنیم
-              globalAxes.setAttribute('position', '0 0 0');
-              globalAxes.object3D.parent = worldOrigin.object3D;
+          // <<< اینجاست جادو! >>>
+          // ۹۰ درجه حول محور X می‌چرخونیم تا Y بشه بالا (Y-up)
+          worldOrigin.object3D.rotateX(-Math.PI / 2);
 
-              // مدل رو هم به world-origin منتقل می‌کنیم (اختیاری)
-              const model = targetEl.querySelector('a-gltf-model');
-              if (model) {
-                worldOrigin.object3D.add(model.object3D);
-              }
+          worldOrigin.object3D.updateMatrixWorld(true);
 
-              console.log('محور جهانی فیکس شد! از این به بعد ثابت می‌مونه');
-              originFixed = true;
-            }
-          });
+          // محورهای جهانی و مدل رو به world-origin منتقل می‌کنیم
+          globalAxes.object3D.position.set(0, 0, 0);
+          globalAxes.object3D.rotation.set(0, 0, 0);
+          worldOrigin.object3D.add(globalAxes.object3D);
 
-          // اگر تارگت گم شد، محور جهانی همچنان ثابت می‌مونه
-          this.el.addEventListener('targetLost', () => {
-            console.log('تارگت گم شد ولی محور جهانی همچنان ثابته');
-          });
+          const model = targetEl.querySelector('a-gltf-model');
+          if (model) worldOrigin.object3D.add(model.object3D);
+
+          console.log('مختصات جهانی فیکس شد + Y-up اعمال شد (سبز = بالا)');
+          originFixed = true;
         }
       });
+    }
+  });
 
-      // کامپوننت رو به تارگت وصل می‌کنیم
-      document.querySelector('#target0').setAttribute('fix-world-origin', '');
-      
-      // مخفی کردن صفحه لودینگ
-      const scene = document.querySelector('a-scene');
-      const loadingScreen = document.getElementById('loading-screen');
-      scene.addEventListener('loaded', () => {
-        setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000);
-      });
-    </script>
+  // وصل کردن کامپوننت
+  document.querySelector('#target0').setAttribute('fix-world-origin', '');
+
+  // لودینگ
+  const scene = document.querySelector('a-scene');
+  const loadingScreen = document.getElementById('loading-screen');
+  scene.addEventListener('loaded', () => {
+    setTimeout(() => loadingScreen.classList.add('hidden'), 1000);
+  });
+</script>
   </body>
 </html>
+
