@@ -20,7 +20,7 @@
   <body>
     
     <div id="loading-screen">
-      <div>در حال تنظیم دقیق مدل...</div>
+      <div>4در حال تنظیم دقیق مدل...</div>
     </div>
 
     <a-scene 
@@ -44,8 +44,8 @@
         <!-- انیمیشن چرخش -->
         <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
           
-          <!-- تصحیح‌کننده که با world up vector کار می‌کنه -->
-          <a-entity id="upright-keeper" world-upright>
+          <!-- تصحیح‌کننده ساده -->
+          <a-entity id="fix-rotation" simple-upright>
             
             <!-- مدل اصلی -->
             <a-gltf-model 
@@ -61,41 +61,35 @@
     </a-scene>
 
     <script>
-      // Component پیشرفته که از world matrix استفاده می‌کنه
-      AFRAME.registerComponent('world-upright', {
+      // راه حل ساده: هر فریم screen angle رو چک کن
+      AFRAME.registerComponent('simple-upright', {
         init: function() {
-          this.worldUp = new THREE.Vector3(0, 1, 0); // بردار بالا در world space
-          this.targetUp = new THREE.Vector3();
-          this.targetRight = new THREE.Vector3();
-          this.targetForward = new THREE.Vector3();
-          this.correctionQuaternion = new THREE.Quaternion();
-          this.worldQuaternion = new THREE.Quaternion();
+          this.getScreenAngle = () => {
+            if (window.screen && window.screen.orientation) {
+              return window.screen.orientation.angle || 0;
+            }
+            if (window.orientation !== undefined) {
+              return window.orientation;
+            }
+            return window.innerWidth > window.innerHeight ? 90 : 0;
+          };
         },
 
         tick: function() {
-          const object3D = this.el.object3D;
-          
-          // به‌روزرسانی world matrix
-          object3D.parent.updateMatrixWorld();
-          
-          // گرفتن world quaternion از parent
-          object3D.parent.getWorldQuaternion(this.worldQuaternion);
-          
-          // محاسبه up vector در world space
-          this.targetUp.copy(this.worldUp).applyQuaternion(this.worldQuaternion);
-          
-          // محاسبه زاویه بین up vector فعلی و world up
-          const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.worldQuaternion);
-          
-          // پیدا کردن rotation که up vector رو به world up برمی‌گردونه
-          // استفاده از setFromUnitVectors برای محاسبه quaternion
-          this.correctionQuaternion.setFromUnitVectors(currentUp, this.worldUp);
-          
-          // اعمال correction به local rotation
-          const euler = new THREE.Euler().setFromQuaternion(this.correctionQuaternion);
-          
-          // فقط Z rotation رو اعمال می‌کنیم
-          object3D.rotation.z = euler.z;
+          const angle = this.getScreenAngle();
+          let zRotation = 0;
+
+          // محاسبه rotation معکوس
+          if (angle === 90 || angle === -270) {
+            zRotation = -90;
+          } else if (angle === -90 || angle === 270) {
+            zRotation = 90;
+          } else if (angle === 180 || angle === -180) {
+            zRotation = 180;
+          }
+
+          // اعمال rotation
+          this.el.object3D.rotation.z = THREE.Math.degToRad(zRotation);
         }
       });
 
