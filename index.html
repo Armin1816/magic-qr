@@ -115,4 +115,29 @@
               wrapperEl.setAttribute('position', '0 0 0');
               wrapperEl.setAttribute('rotation', '0 0 0');
 
-              console.log('model
+              console.log('model auto-correct done', {
+                sizeBefore: size,
+                sizeAfter: size2,
+                min: min
+              });
+            } catch (err) {
+              console.warn('Error while auto-correcting GLB:', err);
+            }
+          }, 50);
+        });
+
+        // نمایش پیام ساده هنگام لود شدن هدف
+        const anchor = document.getElementById('anchor');
+        anchor.addEventListener('targetFound', () => {
+          console.log('target found');
+        });
+        anchor.addEventListener('targetLost', () => {
+          console.log('target lost');
+        });
+
+      })();
+    </script>
+
+  </a-scene>
+</body>
+</html>
