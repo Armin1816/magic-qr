@@ -1,47 +1,118 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fa">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Rotation Fix</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  </head>
-  <body>
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
-      <a-assets>
-        <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
-      </a-assets>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1,user-scalable=no" />
+  <title>AR Rotation Fix - MindAR + A-Frame</title>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- MindAR (image tracking for A-Frame) -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
-      <a-light type="ambient" intensity="1"></a-light>
-      <a-light type="directional" position="5 10 7" intensity="1"></a-light>
+  <style>
+    html,body { height:100%; margin:0; background:#000; }
+    a-scene { width:100%; height:100%; }
+  </style>
+</head>
+<body>
+  <!-- 
+    توجه: جایگزین کن:
+    - MODEL_GLB_URL  -> آدرس مدل glb شما در GitHub (با jsdelivr یا rawcdn)
+    - TARGETS_URL    -> آدرس فایل targets.mind شما (تولید شده توسط mind-ar)
+    مثال jsdelivr: https://cdn.jsdelivr.net/gh/<USERNAME>/<REPO>@main/path/to/model.glb
+  -->
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        
-        <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
-          
-            <a-gltf-model 
-              src="#avatarModel" 
-              position="0 0 0" 
-              scale="0.1 0.1 0.1"
-              rotation="0 0 0"> 
-            </a-gltf-model>
+  <a-scene
+    mindar-image="imageTargetSrc: MODEL_GLB_URL_PLACEHOLDER_TARGETS_MIND; autoStart: true; maxTrack: 1;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
 
-        </a-entity>
+    <a-assets>
+      <!--
+        توجه: از CDN استفاده کن؛ مثال:
+        https://cdn.jsdelivr.net/gh/<USERNAME>/<REPO>@main/model.glb
+      -->
+      <a-asset-item id="avatarModel" src="MODEL_GLB_URL_PLACEHOLDER_GLB"></a-asset-item>
+    </a-assets>
 
+    <!-- مهم: mindar توصیه می‌کند از این کامپوننت مخصوص دوربین استفاده شود -->
+    <a-camera mindar-image-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity light="type: ambient; intensity: 0.8"></a-entity>
+    <a-entity light="type: directional; intensity: 0.8" position="1 2 1"></a-entity>
+
+    <!-- این anchor مربوط به اولین تصویر(هدف) است -->
+    <a-entity id="anchor" mindar-image-target="targetIndex: 0">
+      <!-- یک wrapper برای چرخش و مقیاس‌دهی -->
+      <a-entity id="modelWrapper" position="0 0 0" rotation="0 0 0" scale="1 1 1">
+        <!-- مدل -->
+        <a-gltf-model id="avatarModelEl" src="#avatarModel" position="0 0 0" rotation="0 0 0" scale="0.01 0.01 0.01"
+                      shadow="cast: true; receive: true"></a-gltf-model>
       </a-entity>
-    </a-scene>
-  </body>
-</html>
+    </a-entity>
 
+    <script>
+      // --------- تنظیمات خودکار اصلاح جهت و تراز مدل بعد از load شدن ----------
+      (function () {
+        const modelEl = document.getElementById('avatarModelEl');
+        const wrapperEl = document.getElementById('modelWrapper');
 
+        modelEl.addEventListener('model-loaded', (evt) => {
+          // evt.detail.model -> شیء سه‌جی‌اس مربوط به مدل
+          const model = evt.detail.model; // THREE.Object3D
+          // small delay to ensure matrices updated
+          setTimeout(() => {
+            try {
+              // محاسبه باکس محدودکننده
+              const box = new THREE.Box3().setFromObject(model);
+              const size = new THREE.Vector3();
+              box.getSize(size);
+              const center = new THREE.Vector3();
+              box.getCenter(center);
 
+              // heuristic: اگر ارتفاع (y) کمتر از عمق (z) بود، احتمالاً مدل به پهلو است => چرخش حول X
+              if (size.y < size.z) {
+                model.rotation.x = model.rotation.x - Math.PI / 2;
+              } else if (size.y < size.x) {
+                // اگر ارتفاع کمتر از عرض بود (مدل روی پهلو X) => چرخش حول Z یا Y
+                model.rotation.z = model.rotation.z + Math.PI / 2;
+              }
 
+              // به‌روزرسانی ماتریس‌ها
+              model.updateMatrixWorld(true);
+
+              // دوباره باکس را محاسبه کن پس از چرخش
+              const box2 = new THREE.Box3().setFromObject(model);
+              const size2 = new THREE.Vector3();
+              box2.getSize(size2);
+              const min = box2.min;
+              const center2 = new THREE.Vector3();
+              box2.getCenter(center2);
+
+              // انتقال مدل طوری‌که ته (min.y) روی 0 بیفتد (یعنی روی سطح تصویر/QR قرار گیرد)
+              // توجه: تغییر position روی model (شیء سه‌جی‌اس درون a-entity) اعمال می‌شود
+              model.position.y = model.position.y - min.y;
+
+              // وسط‌چین کردن مدل نسبت به محور X و Z
+              model.position.x = model.position.x - center2.x;
+              model.position.z = model.position.z - center2.z;
+
+              model.updateMatrixWorld(true);
+
+              // (اختیاری) تنظیم مقیاس خودکار: اگر مدل بسیار بزرگ یا کوچک است آن را به اندازه معقولی تبدیل کن
+              const maxDim = Math.max(size2.x, size2.y, size2.z);
+              if (maxDim > 0) {
+                // desiredSize بر حسب متر — میتوانی مقدار را کم یا زیاد کنی
+                const desiredSize = 0.2; // 20 cm
+                const autoScale = desiredSize / maxDim;
+                model.scale.setScalar(autoScale);
+              }
+
+              // اگر بخواهی wrapper را نیز ریست کنی:
+              wrapperEl.setAttribute('position', '0 0 0');
+              wrapperEl.setAttribute('rotation', '0 0 0');
+
+              console.log('model
