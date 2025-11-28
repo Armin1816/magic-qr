@@ -1,96 +1,412 @@
 <!DOCTYPE html>
-<html lang="fa">
-  <head>
+<html lang="fa" dir="rtl">
+<head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Experience - Armin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>نمایشگر مدل سه‌بعدی AR</title>
     
+    <!-- کتابخانه‌های AR -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     
     <style>
-      /* استایل صفحه لودینگ برای جلوگیری از گیج شدن کاربر */
-      #loading-screen {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background-color: #000;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        color: white;
-        font-family: Arial, sans-serif;
-        transition: opacity 0.5s;
-      }
-      .loader {
-        border: 5px solid #f3f3f3;
-        border-top: 5px solid #3498db;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
-      }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      .hidden { opacity: 0; pointer-events: none; }
-    </style>
-  </head>
-  
-  <body>
-    <div id="loading-screen">
-      <div class="loader"></div>
-      <p>در حال دانلود مدل سه بعدی...</p>
-      <p style="font-size: 12px; color: #aaa;">لطفاً دوربین را روی QR Code نگه دارید</p>
-    </div>
-
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
-      <a-assets>
-        <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
-      </a-assets>
-
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-      <a-light type="ambient" intensity="0.6"></a-light>
-      <a-light type="directional" position="10 10 10" intensity="0.5"></a-light>
-
-      <a-entity mindar-image-target="targetIndex: 0" id="mytarget">
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
         
-        <a-gltf-model 
-          src="#avatarModel" 
-          rotation="0 0 0" 
-          position="0 0 0" 
-          scale="0.05 0.05 0.05" 
-          animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
-        </a-gltf-model>
-
-      </a-entity>
+        /* صفحه لودینگ */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            transition: opacity 0.5s;
+        }
+        
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        .progress-bar {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: white;
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 3px;
+        }
+        
+        /* پیام‌های راهنما */
+        #instruction {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 14px;
+            z-index: 1000;
+            text-align: center;
+            max-width: 80%;
+            backdrop-filter: blur(10px);
+        }
+        
+        /* دکمه‌های کنترل */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* پیام خطا */
+        #error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 53, 69, 0.95);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            display: none;
+            z-index: 10000;
+            text-align: center;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <!-- صفحه لودینگ -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">در حال بارگذاری...</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+    </div>
+    
+    <!-- پیام راهنما -->
+    <div id="instruction">📱 دوربین را به سمت تصویر هدف نگه دارید</div>
+    
+    <!-- پیام خطا -->
+    <div id="error-message"></div>
+    
+    <!-- دکمه‌های کنترل -->
+    <div class="controls">
+        <button class="control-btn" id="reset-btn" title="ریست">🔄</button>
+        <button class="control-btn" id="info-btn" title="راهنما">ℹ️</button>
+    </div>
+    
+    <!-- صحنه AR -->
+    <a-scene
+        mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.01; warmupTolerance: 5; missTolerance: 5"
+        color-space="sRGB"
+        renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; alpha: true"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false"
+        embedded
+        gesture-detector
+        id="scene">
+        
+        <!-- دارایی‌ها -->
+        <a-assets timeout="30000">
+            <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
+        </a-assets>
+        
+        <!-- نورپردازی بهتر -->
+        <a-light type="ambient" intensity="0.8"></a-light>
+        <a-light type="directional" intensity="0.5" position="1 1 1"></a-light>
+        <a-light type="hemisphere" intensity="0.3"></a-light>
+        
+        <!-- دوربین -->
+        <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
+        
+        <!-- هدف تصویری -->
+        <a-entity mindar-image-target="targetIndex: 0">
+            <!-- مدل سه‌بعدی با انیمیشن -->
+            <a-gltf-model 
+                id="model"
+                rotation="0 0 0" 
+                position="0 0 0" 
+                scale="0.5 0.5 0.5" 
+                src="#avatarModel"
+                animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true"
+                animation__scale="property: scale; to: 0.55 0.55 0.55; dur: 2000; dir: alternate; loop: true; easing: easeInOutSine"
+                class="clickable"
+                gesture-handler>
+            </a-gltf-model>
+            
+            <!-- افکت‌های اضافی -->
+            <a-ring
+                position="0 -0.1 0"
+                rotation="-90 0 0"
+                radius-inner="0.3"
+                radius-outer="0.5"
+                color="#667eea"
+                opacity="0.3"
+                animation="property: scale; to: 1.2 1.2 1.2; dur: 1500; dir: alternate; loop: true">
+            </a-ring>
+        </a-entity>
     </a-scene>
-
+    
     <script>
-      // این اسکریپت وقتی مدل کامل دانلود شد، صفحه لودینگ را حذف می‌کند
-      const scene = document.querySelector('a-scene');
-      const loadingScreen = document.getElementById('loading-screen');
-
-      scene.addEventListener('loaded', () => {
-        console.log("صحنه آماده است");
-        // حذف صفحه لودینگ بعد از ۳ ثانیه محض اطمینان
+        // مدیریت لودینگ
+        let loadingProgress = 0;
+        const progressBar = document.getElementById('progress');
+        const loadingScreen = document.getElementById('loading-screen');
+        const instruction = document.getElementById('instruction');
+        const errorMessage = document.getElementById('error-message');
+        const scene = document.getElementById('scene');
+        
+        // به‌روزرسانی پروگرس بار
+        function updateProgress(percent) {
+            loadingProgress = Math.min(percent, 100);
+            progressBar.style.width = loadingProgress + '%';
+        }
+        
+        // نمایش خطا
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        // مدیریت بارگذاری
+        let assetsLoaded = false;
+        let arSystemReady = false;
+        
+        // شنود بارگذاری دارایی‌ها
+        AFRAME.registerComponent('asset-loader', {
+            init: function() {
+                const assets = document.querySelector('a-assets');
+                if (assets) {
+                    updateProgress(30);
+                    
+                    assets.addEventListener('loaded', () => {
+                        console.log('Assets loaded');
+                        assetsLoaded = true;
+                        updateProgress(60);
+                        checkAllLoaded();
+                    });
+                    
+                    assets.addEventListener('error', (e) => {
+                        console.error('Asset loading error:', e);
+                        showError('خطا در بارگذاری فایل‌ها. لطفاً اتصال اینترنت را بررسی کنید.');
+                        updateProgress(0);
+                    });
+                }
+            }
+        });
+        
+        // ثبت کامپوننت
+        scene.setAttribute('asset-loader', '');
+        
+        // آماده‌سازی سیستم AR
+        scene.addEventListener('renderstart', () => {
+            console.log('AR System Ready');
+            arSystemReady = true;
+            updateProgress(90);
+            checkAllLoaded();
+        });
+        
+        // بررسی کامل بودن بارگذاری
+        function checkAllLoaded() {
+            if (assetsLoaded && arSystemReady) {
+                updateProgress(100);
+                setTimeout(() => {
+                    loadingScreen.classList.add('hidden');
+                    instruction.style.display = 'block';
+                }, 500);
+            }
+        }
+        
+        // شروع پروگرس
+        updateProgress(10);
+        
+        // تشخیص هدف
+        const arSystem = scene.systems['mindar-image-system'];
+        scene.addEventListener('targetFound', event => {
+            console.log('Target found');
+            instruction.textContent = '✅ هدف یافت شد! مدل در حال نمایش است';
+            instruction.style.background = 'rgba(40, 167, 69, 0.8)';
+        });
+        
+        scene.addEventListener('targetLost', event => {
+            console.log('Target lost');
+            instruction.textContent = '📱 دوربین را به سمت تصویر هدف نگه دارید';
+            instruction.style.background = 'rgba(0, 0, 0, 0.7)';
+        });
+        
+        // دکمه ریست
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            location.reload();
+        });
+        
+        // دکمه راهنما
+        document.getElementById('info-btn').addEventListener('click', () => {
+            alert('📱 نحوه استفاده:\n\n1. دوربین را به سمت تصویر هدف نگه دارید\n2. منتظر بمانید تا مدل سه‌بعدی ظاهر شود\n3. می‌توانید با انگشت مدل را بزرگ/کوچک کنید\n4. مدل به صورت خودکار می‌چرخد');
+        });
+        
+        // مدیریت ژست‌ها برای زوم
+        AFRAME.registerComponent('gesture-handler', {
+            schema: {
+                enabled: { default: true },
+                rotationFactor: { default: 5 },
+                minScale: { default: 0.3 },
+                maxScale: { default: 8 }
+            },
+            
+            init: function() {
+                this.handleScale = this.handleScale.bind(this);
+                this.handleRotate = this.handleRotate.bind(this);
+                
+                this.isVisible = false;
+                this.initialScale = this.el.object3D.scale.clone();
+                this.scaleFactor = 1;
+                
+                this.el.sceneEl.addEventListener('targetFound', () => {
+                    this.isVisible = true;
+                });
+                
+                this.el.sceneEl.addEventListener('targetLost', () => {
+                    this.isVisible = false;
+                });
+            },
+            
+            play: function() {
+                window.addEventListener('touchmove', this.handleScale);
+                window.addEventListener('touchmove', this.handleRotate);
+            },
+            
+            pause: function() {
+                window.removeEventListener('touchmove', this.handleScale);
+                window.removeEventListener('touchmove', this.handleRotate);
+            },
+            
+            handleRotate: function(event) {
+                if (!this.isVisible || event.touches.length !== 1) return;
+            },
+            
+            handleScale: function(event) {
+                if (!this.isVisible || event.touches.length !== 2) return;
+                
+                event.preventDefault();
+                
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                
+                const distance = Math.sqrt(
+                    Math.pow(touch2.pageX - touch1.pageX, 2) +
+                    Math.pow(touch2.pageY - touch1.pageY, 2)
+                );
+                
+                if (this.previousDistance) {
+                    const delta = distance - this.previousDistance;
+                    this.scaleFactor += delta * 0.001;
+                    this.scaleFactor = Math.max(
+                        this.data.minScale,
+                        Math.min(this.data.maxScale, this.scaleFactor)
+                    );
+                    
+                    this.el.object3D.scale.x = this.initialScale.x * this.scaleFactor;
+                    this.el.object3D.scale.y = this.initialScale.y * this.scaleFactor;
+                    this.el.object3D.scale.z = this.initialScale.z * this.scaleFactor;
+                }
+                
+                this.previousDistance = distance;
+            }
+        });
+        
+        // جلوگیری از رفرش صفحه با کشیدن
+        document.addEventListener('touchmove', function(event) {
+            if (event.scale !== 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+        
+        // مدیریت خطاهای احتمالی
+        window.addEventListener('error', (e) => {
+            console.error('Runtime error:', e);
+            if (!assetsLoaded) {
+                showError('خطا در بارگذاری. لطفاً صفحه را رفرش کنید.');
+            }
+        });
+        
+        // تایم‌اوت امنیتی
         setTimeout(() => {
-          loadingScreen.classList.add('hidden');
-        }, 1000);
-      });
-
-      // لاگ کردن برای اینکه بفهمیم کی اسکن انجام شده
-      const target = document.querySelector('#mytarget');
-      target.addEventListener("targetFound", event => {
-        console.log("QR Code پیدا شد!");
-      });
+            if (!assetsLoaded || !arSystemReady) {
+                console.warn('Loading timeout');
+                showError('بارگذاری طولانی شد. در حال تلاش مجدد...');
+                setTimeout(() => location.reload(), 3000);
+            }
+        }, 30000);
     </script>
-  </body>
+</body>
 </html>
