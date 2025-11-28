@@ -55,14 +55,13 @@
       </a-entity>
 
       <!-- مدل در دستگاه مختصات گلوبال (بیرون از target) -->
-      <a-entity id="model-container">
+      <a-entity id="model-container" visible="false">
         <a-gltf-model 
           id="avatar"
           src="#avatarModel" 
           position="0 0 0" 
           scale="0.1 0.1 0.1"
-          rotation="0 0 0"
-          visible="false"> 
+          rotation="0 0 0"> 
         </a-gltf-model>
       </a-entity>
  
@@ -99,19 +98,19 @@
         modelContainer.object3D.quaternion.copy(targetWorldRot);
         
         // نمایش مدل
-        avatar.setAttribute('visible', 'true');
+        modelContainer.setAttribute('visible', 'true');
       });
 
       // وقتی QR کد از دست رفت
       target.addEventListener('targetLost', () => {
         console.log('Target Lost');
         // مخفی کردن مدل
-        avatar.setAttribute('visible', 'false');
+        modelContainer.setAttribute('visible', 'false');
       });
 
       // به‌روزرسانی مداوم موقعیت مدل با target
       scene.addEventListener('renderstart', () => {
-        if (avatar.getAttribute('visible')) {
+        if (modelContainer.getAttribute('visible')) {
           const targetWorldPos = new THREE.Vector3();
           const targetWorldRot = new THREE.Quaternion();
           const targetWorldScale = new THREE.Vector3();
