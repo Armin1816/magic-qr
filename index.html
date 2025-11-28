@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Global Rotation Fixed</title>
+    <title>AR Global Coordinates</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
@@ -11,17 +11,15 @@
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background-color: #000; z-index: 9999;
         display: flex; justify-content: center; align-items: center; color: white;
-        font-family: sans-serif;
       }
       .hidden { display: none !important; }
     </style>
   </head>
   <body>
-    
-    <div id="loading-screen"><div>در حال تنظیم محورهای جهانی...</div></div>
-
+    <div id="loading-screen"><div>در حال بارگذاری...</div></div>
+ 
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
+      mindar-image="imageTargetSrc: ./targets.mind;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
@@ -30,35 +28,101 @@
       <a-assets>
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
-
+ 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
+      
       <a-light type="ambient" intensity="1"></a-light>
       <a-light type="directional" position="5 10 7" intensity="1"></a-light>
-
-      <a-entity mindar-image-target="targetIndex: 0">
+ 
+      <!-- Target Entity: فقط برای شناسایی QR کد -->
+      <a-entity id="target" mindar-image-target="targetIndex: 0">
         
-        <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
-          
-            <a-entity rotation="0 0 0">
-              
-                <a-gltf-model 
-                  src="#avatarModel" 
-                  position="0 0 0" 
-                  scale="0.1 0.1 0.1"> 
-                </a-gltf-model>
-
-            </a-entity>
-
+        <!-- محورهای دستگاه مختصات گلوبال (ثابت روی QR کد) -->
+        <a-entity id="global-axes">
+          <!-- محور X (قرمز) -->
+          <a-box position="0.5 0 0" scale="1 0.02 0.02" color="red"></a-box>
+          <a-text value="X" position="1.1 0 0" color="red" align="center" scale="0.3 0.3 0.3"></a-text>
+   
+          <!-- محور Y (سبز) -->
+          <a-box position="0 0.5 0" scale="0.02 1 0.02" color="green"></a-box>
+          <a-text value="Y" position="0 1.1 0" color="green" align="center" scale="0.3 0.3 0.3"></a-text>
+   
+          <!-- محور Z (آبی) -->
+          <a-box position="0 0 0.5" scale="0.02 0.02 1" color="blue"></a-box>
+          <a-text value="Z" position="0 0 1.1" color="blue" align="center" scale="0.3 0.3 0.3"></a-text>
         </a-entity>
 
       </a-entity>
-    </a-scene>
 
+      <!-- مدل در دستگاه مختصات گلوبال (بیرون از target) -->
+      <a-entity id="model-container">
+        <a-gltf-model 
+          id="avatar"
+          src="#avatarModel" 
+          position="0 0 0" 
+          scale="0.1 0.1 0.1"
+          rotation="0 0 0"
+          visible="false"> 
+        </a-gltf-model>
+      </a-entity>
+ 
+    </a-scene>
+ 
     <script>
       const scene = document.querySelector('a-scene');
       const loadingScreen = document.getElementById('loading-screen');
-      scene.addEventListener('loaded', () => { setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); });
+      const target = document.getElementById('target');
+      const modelContainer = document.getElementById('model-container');
+      const avatar = document.getElementById('avatar');
+      
+      // وقتی صحنه لود شد
+      scene.addEventListener('loaded', () => { 
+        setTimeout(() => { 
+          loadingScreen.classList.add('hidden'); 
+        }, 1000); 
+      });
+
+      // وقتی QR کد شناسایی شد
+      target.addEventListener('targetFound', () => {
+        console.log('Target Found');
+        
+        // گرفتن موقعیت و چرخش گلوبال target
+        const targetWorldPos = new THREE.Vector3();
+        const targetWorldRot = new THREE.Quaternion();
+        const targetWorldScale = new THREE.Vector3();
+        
+        target.object3D.updateMatrixWorld();
+        target.object3D.matrixWorld.decompose(targetWorldPos, targetWorldRot, targetWorldScale);
+        
+        // تنظیم موقعیت و چرخش مدل به دستگاه مختصات گلوبال
+        modelContainer.object3D.position.copy(targetWorldPos);
+        modelContainer.object3D.quaternion.copy(targetWorldRot);
+        
+        // نمایش مدل
+        avatar.setAttribute('visible', 'true');
+      });
+
+      // وقتی QR کد از دست رفت
+      target.addEventListener('targetLost', () => {
+        console.log('Target Lost');
+        // مخفی کردن مدل
+        avatar.setAttribute('visible', 'false');
+      });
+
+      // به‌روزرسانی مداوم موقعیت مدل با target
+      scene.addEventListener('renderstart', () => {
+        if (avatar.getAttribute('visible')) {
+          const targetWorldPos = new THREE.Vector3();
+          const targetWorldRot = new THREE.Quaternion();
+          const targetWorldScale = new THREE.Vector3();
+          
+          target.object3D.updateMatrixWorld();
+          target.object3D.matrixWorld.decompose(targetWorldPos, targetWorldRot, targetWorldScale);
+          
+          modelContainer.object3D.position.copy(targetWorldPos);
+          modelContainer.object3D.quaternion.copy(targetWorldRot);
+        }
+      });
     </script>
   </body>
 </html>
