@@ -15,17 +15,6 @@
         font-family: sans-serif;
       }
       .hidden { display: none !important; }
-      #debug {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        padding: 10px;
-        font-size: 12px;
-        z-index: 1000;
-        display: none;
-      }
     </style>
   </head>
   <body>
@@ -33,8 +22,6 @@
     <div id="loading-screen">
       <div>در حال تنظیم دقیق مدل...</div>
     </div>
-
-    <div id="debug"></div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
@@ -54,11 +41,11 @@
 
       <a-entity mindar-image-target="targetIndex: 0">
         
-        <!-- انیمیشن چرخش -->
-        <a-entity id="rotating-container" animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
+        <!-- انیمیشن چرخش دور محور Y -->
+        <a-entity id="y-rotation" animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
           
-          <!-- لایه تصحیح orientation - اینجا rotation اعمال میشه -->
-          <a-entity id="orientation-fix">
+          <!-- تصحیح‌کننده Z-axis که در هر فریم اجرا میشه -->
+          <a-entity id="z-corrector" keep-upright>
             
             <!-- مدل اصلی -->
             <a-gltf-model 
@@ -74,85 +61,36 @@
     </a-scene>
 
     <script>
-      const orientationFix = document.getElementById('orientation-fix');
-      const debugDiv = document.getElementById('debug');
-      let baseOrientation = null;
-      let currentCompensation = 0;
+      // Component که مدل رو همیشه قائم نگه می‌داره
+      AFRAME.registerComponent('keep-upright', {
+        init: function() {
+          this.camera = document.querySelector('a-camera');
+          this.rotatingParent = document.getElementById('y-rotation');
+        },
 
-      // تابع برای گرفتن orientation فعلی
-      function getCurrentOrientation() {
-        if (window.screen && window.screen.orientation) {
-          return window.screen.orientation.angle || 0;
-        } else if (window.orientation !== undefined) {
-          return window.orientation;
+        tick: function() {
+          if (!this.camera) return;
+
+          // گرفتن rotation دوربین
+          const cameraRotation = this.camera.object3D.rotation;
+          
+          // محاسبه roll دوربین (چرخش دور محور Z)
+          // وقتی گوشی رو افقی می‌کنی، این عدد تغییر می‌کنه
+          const cameraRoll = cameraRotation.z * (180 / Math.PI); // تبدیل به درجه
+          
+          // گرفتن Y rotation از parent (انیمیشن چرخش)
+          const parentYRotation = this.rotatingParent ? 
+            this.rotatingParent.getAttribute('rotation').y : 0;
+          
+          // اعمال rotation معکوس برای نگه داشتن مدل قائم
+          // فقط Z رو تغییر میدیم، Y رو دست نمی‌زنیم چون انیمیشن داره
+          this.el.setAttribute('rotation', {
+            x: 0,
+            y: 0,
+            z: -cameraRoll  // معکوس roll دوربین
+          });
         }
-        return 0;
-      }
-
-      // تابع برای محاسبه و اعمال compensation
-      function updateOrientationCompensation() {
-        const angle = getCurrentOrientation();
-        
-        // محاسبه compensation: معکوس زاویه گوشی
-        let compensationZ = 0;
-        
-        switch(angle) {
-          case 0:    // Portrait
-            compensationZ = 0;
-            break;
-          case 90:   // Landscape راست
-          case -270:
-            compensationZ = -90;
-            break;
-          case -90:  // Landscape چپ
-          case 270:
-            compensationZ = 90;
-            break;
-          case 180:  // Portrait معکوس
-          case -180:
-            compensationZ = 180;
-            break;
-        }
-
-        currentCompensation = compensationZ;
-        
-        // اعمال rotation
-        if (orientationFix) {
-          orientationFix.setAttribute('rotation', `0 0 ${compensationZ}`);
-        }
-
-        // دیباگ
-        debugDiv.innerHTML = `
-          Screen Angle: ${angle}°<br>
-          Compensation: ${compensationZ}°<br>
-          Type: ${getOrientationType()}
-        `;
-        
-        console.log(`Screen: ${angle}° → Compensation: ${compensationZ}°`);
-      }
-
-      function getOrientationType() {
-        const angle = getCurrentOrientation();
-        if (angle === 0) return 'Portrait';
-        if (angle === 90 || angle === -270) return 'Landscape Right';
-        if (angle === -90 || angle === 270) return 'Landscape Left';
-        if (angle === 180 || angle === -180) return 'Portrait Upside';
-        return 'Unknown';
-      }
-
-      // Event listeners برای تغییرات orientation
-      window.addEventListener('orientationchange', () => {
-        setTimeout(updateOrientationCompensation, 100);
       });
-
-      window.addEventListener('resize', () => {
-        updateOrientationCompensation();
-      });
-
-      // اجرای اولیه
-      setTimeout(() => {
-        updateOrientationCompensation();
-      }, 500);
 
       // حذف لودینگ
       const scene = document.querySelector('a-scene');
@@ -161,13 +99,7 @@
       scene.addEventListener('loaded', () => { 
         setTimeout(() => { 
           loadingScreen.classList.add('hidden');
-          updateOrientationCompensation();
         }, 1000); 
-      });
-
-      // فعال‌سازی دیباگ با دابل کلیک
-      document.addEventListener('dblclick', () => {
-        debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none';
       });
     </script>
   </body>
