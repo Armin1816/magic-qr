@@ -1,107 +1,159 @@
 <!DOCTYPE html>
 <html lang="fa">
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR 3D Perfect Fix</title>
+    <title>AR — Global Coordinate Frame on QR</title>
+
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    
+
     <style>
+      body { margin: 0; overflow: hidden; direction: rtl; font-family: sans-serif; }
       #loading-screen {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: #000; z-index: 9999;
+        background-color: rgba(0,0,0,0.9); z-index: 9999;
         display: flex; justify-content: center; align-items: center; color: white;
-        font-family: sans-serif;
       }
       .hidden { display: none !important; }
+      .debug-note {
+        position: fixed; left: 8px; top: 8px; z-index: 10000; color: white;
+        background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 6px; font-size: 14px;
+      }
     </style>
   </head>
-  <body>
-    
-    <div id="loading-screen">
-      <div>4در حال تنظیم دقیق مدل...</div>
-    </div>
 
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
+  <body>
+    <div id="loading-screen"><div>حالت دیباگ: نمایش محور گلوبال روی QR</div></div>
+    <div class="debug-note">برای تغییر موقعیت مدل از تابع <code>setModelToGlobal(x,y,z, {{rotX,rotY,rotZ}})</code> استفاده کنید.</div>
+
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+    >
       <a-assets>
-        <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
+        <!-- مدل خودت را اینجا قرار بده -->
+        <a-asset-item id="avatarModelFile" src="./model.glb"></a-asset-item>
       </a-assets>
 
+      <!-- دوربین (غیرفعال کردن look-controls برای پایدار بودن) -->
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-      
+
       <a-light type="ambient" intensity="1"></a-light>
       <a-light type="directional" position="5 10 7" intensity="1"></a-light>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        
-        <!-- انیمیشن چرخش -->
-        <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
-          
-          <!-- تصحیح‌کننده ساده -->
-          <a-entity id="fix-rotation" simple-upright>
-            
-            <!-- مدل اصلی -->
-            <a-gltf-model 
-              src="#avatarModel" 
-              position="0 0 0" 
-              scale="0.1 0.1 0.1"
-              rotation="0 0 0"> 
-            </a-gltf-model>
+      <!-- این موجودیتی است که موقعیت/چرخشِ تصویر QR را ارائه می‌دهد -->
+      <a-entity mindar-image-target="targetIndex: 0" id="targetRoot">
 
+        <!-- globalFrame: مبدأ مختصات گلوبال که روی صفحه QR فیکس است -->
+        <a-entity id="globalFrame" visible="false">
+          <!-- برای اطمینان بصری، چند جعبه کوچک برای X,Y,Z هم می‌سازیم (قابل حذف) -->
+          <a-box id="axisX" position="0.25 0 0" scale="0.5 0.01 0.01" rotation="0 0 0" material="color: #ff0000"></a-box>
+          <a-text value="X" position="0.6 0 0" color="#ff0000" align="center"></a-text>
+
+          <a-box id="axisY" position="0 0.25 0" scale="0.01 0.5 0.01" rotation="0 0 0" material="color: #00ff00"></a-box>
+          <a-text value="Y" position="0 0.6 0" color="#00ff00" align="center"></a-text>
+
+          <a-box id="axisZ" position="0 0 0.25" scale="0.01 0.01 0.5" rotation="0 0 0" material="color: #0000ff"></a-box>
+          <a-text value="Z" position="0 0 0.6" color="#0000ff" align="center"></a-text>
+
+          <!-- گروهی که مدل را در دستگاه مختصات گلوبال نگه می‌دارد -->
+          <a-entity id="globalModelGroup" visible="false" position="0 0 0" rotation="0 0 0">
+            <a-gltf-model id="avatarModelEntity" src="#avatarModelFile" position="0 0 0" rotation="0 0 0" scale="0.1 0.1 0.1"></a-gltf-model>
           </a-entity>
         </a-entity>
+
       </a-entity>
     </a-scene>
 
     <script>
-      // راه حل ساده: هر فریم screen angle رو چک کن
-      AFRAME.registerComponent('simple-upright', {
-        init: function() {
-          this.getScreenAngle = () => {
-            if (window.screen && window.screen.orientation) {
-              return window.screen.orientation.angle || 0;
-            }
-            if (window.orientation !== undefined) {
-              return window.orientation;
-            }
-            return window.innerWidth > window.innerHeight ? 90 : 0;
-          };
-        },
+      // کوتاه: دسترسی به المنت‌ها
+      const sceneEl = document.querySelector('a-scene');
+      const loadingScreen = document.getElementById('loading-screen');
 
-        tick: function() {
-          const angle = this.getScreenAngle();
-          let zRotation = 0;
+      const targetRoot = document.getElementById('targetRoot');         // mindar target entity
+      const globalFrame = document.getElementById('globalFrame');       // مبدأ گلوبال
+      const modelGroup = document.getElementById('globalModelGroup');   // گروه مدل
+      const avatarModel = document.getElementById('avatarModelEntity');
 
-          // محاسبه rotation معکوس
-          if (angle === 90 || angle === -270) {
-            zRotation = -90;
-          } else if (angle === -90 || angle === 270) {
-            zRotation = 90;
-          } else if (angle === 180 || angle === -180) {
-            zRotation = 180;
-          }
+      // وقتی صحنه بارگذاری شد، صفحه‌ی لودینگ را مخفی کن
+      sceneEl.addEventListener('loaded', () => {
+        setTimeout(() => loadingScreen.classList.add('hidden'), 800);
+      });
 
-          // اعمال rotation
-          this.el.object3D.rotation.z = THREE.Math.degToRad(zRotation);
+      // استفاده از Three.js برای اضافه کردن یک AxesHelper دقیق‌تر (خط رنگی X/Y/Z)
+      // این helper به globalFrame.object3D اضافه می‌شود.
+      sceneEl.addEventListener('renderstart', () => {
+        // create axes helper once
+        if (globalFrame && globalFrame.object3D && !globalFrame._axesAdded) {
+          const axes = new THREE.AxesHelper(0.35); // طول محور به متر
+          // افزایش خوانایی خطوط در AR
+          axes.material.depthTest = false;
+          axes.renderOrder = 9999;
+          globalFrame.object3D.add(axes);
+          globalFrame._axesAdded = true;
         }
       });
 
-      // حذف لودینگ
-      const scene = document.querySelector('a-scene');
-      const loadingScreen = document.getElementById('loading-screen');
-      
-      scene.addEventListener('loaded', () => { 
-        setTimeout(() => { 
-          loadingScreen.classList.add('hidden');
-        }, 1000); 
+      // توابع عمومی برای کنترل: نمایش/مخفی و تنظیم موقعیت مدل نسبت به گلوبال
+      function showGlobalFrame(show=true) {
+        globalFrame.setAttribute('visible', show ? 'true' : 'false');
+      }
+      function showModel(show=true) {
+        modelGroup.setAttribute('visible', show ? 'true' : 'false');
+      }
+
+      /**
+       * قرار دادن مدل نسبت به دستگاه مختصات گلوبال.
+       * x,y,z بر حسب متر؛ rotDeg: {x:deg,y:deg,z:deg}
+       */
+      function setModelToGlobal(x=0, y=0, z=0, rotDeg={x:0,y:0,z:0}, sx=0.1, sy=0.1, sz=0.1) {
+        // چون مدل داخل globalModelGroup هست، فقط position گروه را تنظیم می‌کنیم
+        modelGroup.object3D.position.set(x, y, z);
+        modelGroup.object3D.rotation.set(
+          THREE.MathUtils.degToRad(rotDeg.x || 0),
+          THREE.MathUtils.degToRad(rotDeg.y || 0),
+          THREE.MathUtils.degToRad(rotDeg.z || 0)
+        );
+        // اسکِیل مدل (می‌تونی مدل رو داخل گروه هم مقیاس بدی)
+        avatarModel.object3D.scale.set(sx, sy, sz);
+      }
+
+      // رویدادهای پیدا شدن/گم شدنِ تارگت (QR)
+      // mindar-image-target entity کلاس‌های custom رو emit می‌کنه: "targetFound" و "targetLost"
+      targetRoot.addEventListener('targetFound', (e) => {
+        // وقتی تارگت پیدا شد، محور گلوبال و مدل رو نمایش بده
+        console.log('targetFound');
+        showGlobalFrame(true);
+        showModel(true);
+
+        // نمونه: مدل را 10 سانت بالای مرکز قرار می‌دهیم و کمی رو به جلو
+        // (می‌تونی این مقادیر را با setModelToGlobal تغییر دهی)
+        setModelToGlobal(0, 0.05, -0.15, {x:0,y:0,z:0}, 0.12,0.12,0.12);
       });
+
+      targetRoot.addEventListener('targetLost', (e) => {
+        console.log('targetLost');
+        showModel(false);
+        showGlobalFrame(false);
+      });
+
+      // اگر خواستی مدل را دستی تنظیم کنی از کنسول می‌توانی فراخوانی کنی:
+      // مثال در کنسول مرورگر:
+      // setModelToGlobal(0.1, 0.02, -0.2, {x:0,y:45,z:0}, 0.08,0.08,0.08);
+
+      // اطمینان از اینکه وقتی مدل لود شد، اطلاعات اضافه را ببینیم
+      avatarModel.addEventListener('model-loaded', () => {
+        console.log('Model loaded into scene.');
+      });
+
+      // Public API ساده برای استفاده‌ی بعدی (در صورت لزوم)
+      window.setModelToGlobal = setModelToGlobal;
+      window.showGlobalFrame = showGlobalFrame;
+      window.showModel = showModel;
     </script>
   </body>
 </html>
