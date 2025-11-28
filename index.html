@@ -15,13 +15,26 @@
         font-family: sans-serif;
       }
       .hidden { display: none !important; }
+      #debug {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 10px;
+        font-size: 12px;
+        z-index: 1000;
+        display: none;
+      }
     </style>
   </head>
   <body>
     
     <div id="loading-screen">
-      <div>2در حال تنظیم دقیق مدل...</div>
+      <div>در حال تنظیم دقیق مدل...</div>
     </div>
+
+    <div id="debug"></div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001;" 
@@ -42,10 +55,10 @@
       <a-entity mindar-image-target="targetIndex: 0">
         
         <!-- انیمیشن چرخش -->
-        <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
+        <a-entity id="rotating-container" animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
           
-          <!-- لایه تصحیح orientation -->
-          <a-entity id="orientation-fix" orientation-corrector>
+          <!-- لایه تصحیح orientation - اینجا rotation اعمال میشه -->
+          <a-entity id="orientation-fix">
             
             <!-- مدل اصلی -->
             <a-gltf-model 
@@ -61,89 +74,101 @@
     </a-scene>
 
     <script>
-      // Component سفارشی برای تصحیح orientation
-      AFRAME.registerComponent('orientation-corrector', {
-        init: function() {
-          this.currentOrientation = this.getOrientation();
-          this.updateRotation();
-          
-          // گوش دادن به تغییرات orientation
-          window.addEventListener('orientationchange', () => {
-            setTimeout(() => {
-              this.currentOrientation = this.getOrientation();
-              this.updateRotation();
-            }, 100);
-          });
+      const orientationFix = document.getElementById('orientation-fix');
+      const debugDiv = document.getElementById('debug');
+      let baseOrientation = null;
+      let currentCompensation = 0;
 
-          // برای مرورگرهایی که orientationchange ندارند
-          window.addEventListener('resize', () => {
-            const newOrientation = this.getOrientation();
-            if (newOrientation !== this.currentOrientation) {
-              this.currentOrientation = newOrientation;
-              this.updateRotation();
-            }
-          });
-        },
-
-        getOrientation: function() {
-          // تشخیص orientation گوشی
-          if (window.screen && window.screen.orientation) {
-            const type = window.screen.orientation.type;
-            if (type.includes('landscape')) {
-              return type.includes('primary') ? 'landscape-primary' : 'landscape-secondary';
-            } else {
-              return type.includes('primary') ? 'portrait-primary' : 'portrait-secondary';
-            }
-          } else if (window.orientation !== undefined) {
-            // برای iOS و مرورگرهای قدیمی
-            switch(window.orientation) {
-              case 90: return 'landscape-primary';
-              case -90: return 'landscape-secondary';
-              case 180: return 'portrait-secondary';
-              default: return 'portrait-primary';
-            }
-          } else {
-            // fallback: استفاده از نسبت ابعاد صفحه
-            return window.innerWidth > window.innerHeight ? 'landscape-primary' : 'portrait-primary';
-          }
-        },
-
-        updateRotation: function() {
-          // تنظیم rotation بر اساس orientation
-          let rotationZ = 0;
-          
-          switch(this.currentOrientation) {
-            case 'portrait-primary':
-              rotationZ = 0;
-              break;
-            case 'landscape-primary':
-              rotationZ = -90;
-              break;
-            case 'landscape-secondary':
-              rotationZ = 90;
-              break;
-            case 'portrait-secondary':
-              rotationZ = 180;
-              break;
-          }
-
-          // اعمال rotation به entity
-          this.el.setAttribute('rotation', `0 0 ${rotationZ}`);
-          
-          console.log(`Orientation: ${this.currentOrientation}, Rotation Z: ${rotationZ}`);
+      // تابع برای گرفتن orientation فعلی
+      function getCurrentOrientation() {
+        if (window.screen && window.screen.orientation) {
+          return window.screen.orientation.angle || 0;
+        } else if (window.orientation !== undefined) {
+          return window.orientation;
         }
+        return 0;
+      }
+
+      // تابع برای محاسبه و اعمال compensation
+      function updateOrientationCompensation() {
+        const angle = getCurrentOrientation();
+        
+        // محاسبه compensation: معکوس زاویه گوشی
+        let compensationZ = 0;
+        
+        switch(angle) {
+          case 0:    // Portrait
+            compensationZ = 0;
+            break;
+          case 90:   // Landscape راست
+          case -270:
+            compensationZ = -90;
+            break;
+          case -90:  // Landscape چپ
+          case 270:
+            compensationZ = 90;
+            break;
+          case 180:  // Portrait معکوس
+          case -180:
+            compensationZ = 180;
+            break;
+        }
+
+        currentCompensation = compensationZ;
+        
+        // اعمال rotation
+        if (orientationFix) {
+          orientationFix.setAttribute('rotation', `0 0 ${compensationZ}`);
+        }
+
+        // دیباگ
+        debugDiv.innerHTML = `
+          Screen Angle: ${angle}°<br>
+          Compensation: ${compensationZ}°<br>
+          Type: ${getOrientationType()}
+        `;
+        
+        console.log(`Screen: ${angle}° → Compensation: ${compensationZ}°`);
+      }
+
+      function getOrientationType() {
+        const angle = getCurrentOrientation();
+        if (angle === 0) return 'Portrait';
+        if (angle === 90 || angle === -270) return 'Landscape Right';
+        if (angle === -90 || angle === 270) return 'Landscape Left';
+        if (angle === 180 || angle === -180) return 'Portrait Upside';
+        return 'Unknown';
+      }
+
+      // Event listeners برای تغییرات orientation
+      window.addEventListener('orientationchange', () => {
+        setTimeout(updateOrientationCompensation, 100);
       });
 
-      // حذف لودینگ بعد از آماده شدن صحنه
+      window.addEventListener('resize', () => {
+        updateOrientationCompensation();
+      });
+
+      // اجرای اولیه
+      setTimeout(() => {
+        updateOrientationCompensation();
+      }, 500);
+
+      // حذف لودینگ
       const scene = document.querySelector('a-scene');
       const loadingScreen = document.getElementById('loading-screen');
       
       scene.addEventListener('loaded', () => { 
         setTimeout(() => { 
-          loadingScreen.classList.add('hidden'); 
+          loadingScreen.classList.add('hidden');
+          updateOrientationCompensation();
         }, 1000); 
+      });
+
+      // فعال‌سازی دیباگ با دابل کلیک
+      document.addEventListener('dblclick', () => {
+        debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none';
       });
     </script>
   </body>
 </html>
-
