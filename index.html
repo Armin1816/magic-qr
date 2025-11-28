@@ -15,7 +15,8 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
         }
         
         /* صفحه لودینگ */
@@ -32,7 +33,7 @@
             align-items: center;
             z-index: 9999;
             color: white;
-            transition: opacity 0.5s;
+            transition: opacity 0.8s ease;
         }
         
         #loading-screen.hidden {
@@ -41,13 +42,13 @@
         }
         
         .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top: 5px solid white;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         
         @keyframes spin {
@@ -56,27 +57,59 @@
         }
         
         .loading-text {
-            font-size: 18px;
+            font-size: 20px;
+            font-weight: bold;
             text-align: center;
             padding: 0 20px;
+            margin-bottom: 10px;
+        }
+        
+        .loading-subtext {
+            font-size: 14px;
+            opacity: 0.8;
+            text-align: center;
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
+        
+        .progress-container {
+            width: 85%;
+            max-width: 350px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
         
         .progress-bar {
-            width: 80%;
-            max-width: 300px;
-            height: 6px;
+            height: 8px;
             background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-            margin-top: 15px;
+            border-radius: 16px;
             overflow: hidden;
+            position: relative;
         }
         
         .progress-fill {
             height: 100%;
-            background: white;
+            background: linear-gradient(90deg, #fff, #e0e7ff);
             width: 0%;
-            transition: width 0.3s;
-            border-radius: 3px;
+            transition: width 0.4s ease;
+            border-radius: 16px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .file-size-info {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 15px;
+            text-align: center;
         }
         
         /* پیام‌های راهنما */
@@ -85,42 +118,67 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             color: white;
             padding: 15px 25px;
-            border-radius: 25px;
-            font-size: 14px;
+            border-radius: 30px;
+            font-size: 15px;
             z-index: 1000;
             text-align: center;
-            max-width: 80%;
-            backdrop-filter: blur(10px);
+            max-width: 85%;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            display: none;
+            animation: slideDown 0.5s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
         }
         
         /* دکمه‌های کنترل */
         .controls {
             position: fixed;
-            bottom: 20px;
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 10px;
+            gap: 15px;
             z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .controls.visible {
+            opacity: 1;
         }
         
         .control-btn {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border: none;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
+            width: 55px;
+            height: 55px;
+            font-size: 22px;
             cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .control-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.9);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
         }
         
         /* پیام خطا */
@@ -131,12 +189,36 @@
             transform: translate(-50%, -50%);
             background: rgba(220, 53, 69, 0.95);
             color: white;
-            padding: 20px 30px;
-            border-radius: 15px;
+            padding: 25px 35px;
+            border-radius: 20px;
             display: none;
             z-index: 10000;
             text-align: center;
-            max-width: 80%;
+            max-width: 85%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            animation: popIn 0.3s ease;
+        }
+        
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        .error-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .error-text {
+            font-size: 14px;
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -144,51 +226,59 @@
     <!-- صفحه لودینگ -->
     <div id="loading-screen">
         <div class="spinner"></div>
-        <div class="loading-text">در حال بارگذاری...</div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progress"></div>
+        <div class="loading-text" id="loading-title">در حال بارگذاری...</div>
+        <div class="loading-subtext" id="loading-subtitle">لطفاً صبور باشید</div>
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0%</div>
         </div>
+        <div class="file-size-info">⏳ در حال دانلود مدل سه‌بعدی (ممکن است چند لحظه طول بکشد)</div>
     </div>
     
     <!-- پیام راهنما -->
     <div id="instruction">📱 دوربین را به سمت تصویر هدف نگه دارید</div>
     
     <!-- پیام خطا -->
-    <div id="error-message"></div>
+    <div id="error-message">
+        <div class="error-title">⚠️ خطا</div>
+        <div class="error-text" id="error-text"></div>
+    </div>
     
     <!-- دکمه‌های کنترل -->
-    <div class="controls">
+    <div class="controls" id="controls">
         <button class="control-btn" id="reset-btn" title="ریست">🔄</button>
         <button class="control-btn" id="info-btn" title="راهنما">ℹ️</button>
     </div>
     
     <!-- صحنه AR -->
     <a-scene
-        mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.01; warmupTolerance: 5; missTolerance: 5"
+        mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.001; filterBeta: 0.1; warmupTolerance: 10; missTolerance: 10"
         color-space="sRGB"
         renderer="colorManagement: true; physicallyCorrectLights: true; antialias: true; alpha: true"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false"
         embedded
-        gesture-detector
-        id="scene">
+        id="scene"
+        loading-screen="enabled: false">
         
-        <!-- دارایی‌ها -->
-        <a-assets timeout="30000">
+        <!-- دارایی‌ها با تایم‌اوت طولانی‌تر -->
+        <a-assets timeout="120000">
             <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
         </a-assets>
         
         <!-- نورپردازی بهتر -->
-        <a-light type="ambient" intensity="0.8"></a-light>
-        <a-light type="directional" intensity="0.5" position="1 1 1"></a-light>
-        <a-light type="hemisphere" intensity="0.3"></a-light>
+        <a-light type="ambient" intensity="0.9"></a-light>
+        <a-light type="directional" intensity="0.6" position="2 2 1"></a-light>
+        <a-light type="hemisphere" intensity="0.4" groundColor="#ffffff"></a-light>
         
         <!-- دوربین -->
-        <a-camera position="0 0 0" look-controls="enabled: false" cursor="rayOrigin: mouse"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
         <!-- هدف تصویری -->
         <a-entity mindar-image-target="targetIndex: 0">
-            <!-- مدل سه‌بعدی با انیمیشن -->
+            <!-- مدل سه‌بعدی -->
             <a-gltf-model 
                 id="model"
                 rotation="0 0 0" 
@@ -197,216 +287,233 @@
                 src="#avatarModel"
                 animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true"
                 animation__scale="property: scale; to: 0.55 0.55 0.55; dur: 2000; dir: alternate; loop: true; easing: easeInOutSine"
-                class="clickable"
-                gesture-handler>
+                visible="false">
             </a-gltf-model>
             
-            <!-- افکت‌های اضافی -->
+            <!-- حلقه نوری -->
             <a-ring
                 position="0 -0.1 0"
                 rotation="-90 0 0"
                 radius-inner="0.3"
                 radius-outer="0.5"
                 color="#667eea"
-                opacity="0.3"
-                animation="property: scale; to: 1.2 1.2 1.2; dur: 1500; dir: alternate; loop: true">
+                opacity="0.4"
+                animation="property: scale; to: 1.3 1.3 1.3; dur: 1500; dir: alternate; loop: true"
+                visible="false"
+                id="ring">
             </a-ring>
         </a-entity>
     </a-scene>
     
     <script>
-        // مدیریت لودینگ
-        let loadingProgress = 0;
-        const progressBar = document.getElementById('progress');
+        // متغیرهای اصلی
         const loadingScreen = document.getElementById('loading-screen');
+        const progressBar = document.getElementById('progress');
+        const progressText = document.getElementById('progress-text');
+        const loadingTitle = document.getElementById('loading-title');
+        const loadingSubtitle = document.getElementById('loading-subtitle');
         const instruction = document.getElementById('instruction');
         const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
         const scene = document.getElementById('scene');
+        const controls = document.getElementById('controls');
+        const model = document.getElementById('model');
+        const ring = document.getElementById('ring');
         
-        // به‌روزرسانی پروگرس بار
-        function updateProgress(percent) {
-            loadingProgress = Math.min(percent, 100);
-            progressBar.style.width = loadingProgress + '%';
+        let currentProgress = 0;
+        let modelLoaded = false;
+        let arReady = false;
+        let targetVisible = false;
+        
+        // تابع به‌روزرسانی پروگرس
+        function updateProgress(percent, status = '') {
+            currentProgress = Math.min(Math.max(percent, 0), 100);
+            progressBar.style.width = currentProgress + '%';
+            progressText.textContent = Math.round(currentProgress) + '%';
+            
+            if (status) {
+                loadingSubtitle.textContent = status;
+            }
+            
+            // پیام‌های مرحله‌ای
+            if (currentProgress < 30) {
+                loadingTitle.textContent = '⏳ در حال اتصال...';
+            } else if (currentProgress < 60) {
+                loadingTitle.textContent = '📦 در حال دانلود مدل...';
+            } else if (currentProgress < 90) {
+                loadingTitle.textContent = '🎨 در حال پردازش...';
+            } else if (currentProgress < 100) {
+                loadingTitle.textContent = '✨ تقریباً آماده است...';
+            } else {
+                loadingTitle.textContent = '✅ بارگذاری کامل شد!';
+            }
         }
         
         // نمایش خطا
         function showError(message) {
-            errorMessage.textContent = '❌ ' + message;
+            errorText.textContent = message;
             errorMessage.style.display = 'block';
             setTimeout(() => {
                 errorMessage.style.display = 'none';
-            }, 5000);
+            }, 7000);
         }
         
-        // مدیریت بارگذاری
-        let assetsLoaded = false;
-        let arSystemReady = false;
+        // شروع بارگذاری
+        updateProgress(5, 'آماده‌سازی دوربین...');
         
-        // شنود بارگذاری دارایی‌ها
-        AFRAME.registerComponent('asset-loader', {
-            init: function() {
-                const assets = document.querySelector('a-assets');
-                if (assets) {
-                    updateProgress(30);
-                    
-                    assets.addEventListener('loaded', () => {
-                        console.log('Assets loaded');
-                        assetsLoaded = true;
-                        updateProgress(60);
-                        checkAllLoaded();
-                    });
-                    
-                    assets.addEventListener('error', (e) => {
-                        console.error('Asset loading error:', e);
-                        showError('خطا در بارگذاری فایل‌ها. لطفاً اتصال اینترنت را بررسی کنید.');
-                        updateProgress(0);
-                    });
+        // بارگذاری Assets
+        const assets = document.querySelector('a-assets');
+        let loadStartTime = Date.now();
+        
+        if (assets) {
+            updateProgress(15, 'شروع دانلود فایل‌ها...');
+            
+            // شبیه‌سازی پروگرس برای فایل‌های بزرگ
+            const progressInterval = setInterval(() => {
+                if (currentProgress < 70 && !modelLoaded) {
+                    updateProgress(currentProgress + 2, 'در حال دانلود... (فایل حجیم است)');
                 }
-            }
+            }, 500);
+            
+            assets.addEventListener('loaded', () => {
+                clearInterval(progressInterval);
+                const loadTime = ((Date.now() - loadStartTime) / 1000).toFixed(1);
+                console.log(`✅ Assets loaded in ${loadTime}s`);
+                modelLoaded = true;
+                updateProgress(75, 'فایل‌ها بارگذاری شد ✓');
+                checkComplete();
+            });
+            
+            assets.addEventListener('timeout', () => {
+                clearInterval(progressInterval);
+                console.error('❌ Assets timeout');
+                showError('زمان بارگذاری تمام شد. لطفاً اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.');
+                updateProgress(0, 'خطا در بارگذاری!');
+            });
+            
+            assets.addEventListener('error', (e) => {
+                clearInterval(progressInterval);
+                console.error('❌ Assets error:', e);
+                showError('خطا در بارگذاری فایل‌ها. لطفاً مطمئن شوید که فایل model.glb در مسیر صحیح قرار دارد.');
+                updateProgress(0, 'خطا!');
+            });
+        }
+        
+        // آماده‌سازی AR
+        scene.addEventListener('loaded', () => {
+            console.log('✅ Scene loaded');
+            updateProgress(85, 'راه‌اندازی AR...');
         });
         
-        // ثبت کامپوننت
-        scene.setAttribute('asset-loader', '');
-        
-        // آماده‌سازی سیستم AR
         scene.addEventListener('renderstart', () => {
-            console.log('AR System Ready');
-            arSystemReady = true;
-            updateProgress(90);
-            checkAllLoaded();
+            console.log('✅ AR System ready');
+            arReady = true;
+            updateProgress(95, 'سیستم AR آماده است');
+            checkComplete();
         });
         
-        // بررسی کامل بودن بارگذاری
-        function checkAllLoaded() {
-            if (assetsLoaded && arSystemReady) {
-                updateProgress(100);
+        // بررسی اتمام بارگذاری
+        function checkComplete() {
+            if (modelLoaded && arReady) {
+                updateProgress(100, '✅ همه چیز آماده است!');
                 setTimeout(() => {
                     loadingScreen.classList.add('hidden');
                     instruction.style.display = 'block';
-                }, 500);
+                    controls.classList.add('visible');
+                    console.log('🎉 App ready!');
+                }, 800);
             }
         }
         
-        // شروع پروگرس
-        updateProgress(10);
-        
         // تشخیص هدف
-        const arSystem = scene.systems['mindar-image-system'];
-        scene.addEventListener('targetFound', event => {
-            console.log('Target found');
+        scene.addEventListener('targetFound', () => {
+            console.log('🎯 Target found');
+            targetVisible = true;
             instruction.textContent = '✅ هدف یافت شد! مدل در حال نمایش است';
-            instruction.style.background = 'rgba(40, 167, 69, 0.8)';
+            instruction.style.background = 'rgba(40, 167, 69, 0.9)';
+            
+            // نمایش مدل و حلقه
+            if (model) model.setAttribute('visible', 'true');
+            if (ring) ring.setAttribute('visible', 'true');
         });
         
-        scene.addEventListener('targetLost', event => {
-            console.log('Target lost');
+        scene.addEventListener('targetLost', () => {
+            console.log('❌ Target lost');
+            targetVisible = false;
             instruction.textContent = '📱 دوربین را به سمت تصویر هدف نگه دارید';
-            instruction.style.background = 'rgba(0, 0, 0, 0.7)';
+            instruction.style.background = 'rgba(0, 0, 0, 0.85)';
+            
+            // مخفی کردن مدل و حلقه
+            if (model) model.setAttribute('visible', 'false');
+            if (ring) ring.setAttribute('visible', 'false');
         });
         
-        // دکمه ریست
+        // دکمه‌ها
         document.getElementById('reset-btn').addEventListener('click', () => {
-            location.reload();
-        });
-        
-        // دکمه راهنما
-        document.getElementById('info-btn').addEventListener('click', () => {
-            alert('📱 نحوه استفاده:\n\n1. دوربین را به سمت تصویر هدف نگه دارید\n2. منتظر بمانید تا مدل سه‌بعدی ظاهر شود\n3. می‌توانید با انگشت مدل را بزرگ/کوچک کنید\n4. مدل به صورت خودکار می‌چرخد');
-        });
-        
-        // مدیریت ژست‌ها برای زوم
-        AFRAME.registerComponent('gesture-handler', {
-            schema: {
-                enabled: { default: true },
-                rotationFactor: { default: 5 },
-                minScale: { default: 0.3 },
-                maxScale: { default: 8 }
-            },
-            
-            init: function() {
-                this.handleScale = this.handleScale.bind(this);
-                this.handleRotate = this.handleRotate.bind(this);
-                
-                this.isVisible = false;
-                this.initialScale = this.el.object3D.scale.clone();
-                this.scaleFactor = 1;
-                
-                this.el.sceneEl.addEventListener('targetFound', () => {
-                    this.isVisible = true;
-                });
-                
-                this.el.sceneEl.addEventListener('targetLost', () => {
-                    this.isVisible = false;
-                });
-            },
-            
-            play: function() {
-                window.addEventListener('touchmove', this.handleScale);
-                window.addEventListener('touchmove', this.handleRotate);
-            },
-            
-            pause: function() {
-                window.removeEventListener('touchmove', this.handleScale);
-                window.removeEventListener('touchmove', this.handleRotate);
-            },
-            
-            handleRotate: function(event) {
-                if (!this.isVisible || event.touches.length !== 1) return;
-            },
-            
-            handleScale: function(event) {
-                if (!this.isVisible || event.touches.length !== 2) return;
-                
-                event.preventDefault();
-                
-                const touch1 = event.touches[0];
-                const touch2 = event.touches[1];
-                
-                const distance = Math.sqrt(
-                    Math.pow(touch2.pageX - touch1.pageX, 2) +
-                    Math.pow(touch2.pageY - touch1.pageY, 2)
-                );
-                
-                if (this.previousDistance) {
-                    const delta = distance - this.previousDistance;
-                    this.scaleFactor += delta * 0.001;
-                    this.scaleFactor = Math.max(
-                        this.data.minScale,
-                        Math.min(this.data.maxScale, this.scaleFactor)
-                    );
-                    
-                    this.el.object3D.scale.x = this.initialScale.x * this.scaleFactor;
-                    this.el.object3D.scale.y = this.initialScale.y * this.scaleFactor;
-                    this.el.object3D.scale.z = this.initialScale.z * this.scaleFactor;
-                }
-                
-                this.previousDistance = distance;
+            if (confirm('آیا می‌خواهید صفحه را مجدداً بارگذاری کنید؟')) {
+                location.reload();
             }
         });
         
-        // جلوگیری از رفرش صفحه با کشیدن
-        document.addEventListener('touchmove', function(event) {
-            if (event.scale !== 1) {
-                event.preventDefault();
+        document.getElementById('info-btn').addEventListener('click', () => {
+            alert('📱 راهنمای استفاده:\n\n' +
+                  '1️⃣ دوربین را به سمت تصویر هدف (QR Code/Marker) نگه دارید\n\n' +
+                  '2️⃣ صبر کنید تا مدل سه‌بعدی ظاهر شود\n\n' +
+                  '3️⃣ مدل به صورت خودکار می‌چرخد و حرکت می‌کند\n\n' +
+                  '4️⃣ با دو انگشت می‌توانید مدل را بزرگ/کوچک کنید\n\n' +
+                  '⚠️ اگر مدل نمایش داده نشد:\n' +
+                  '• فاصله دوربین را تنظیم کنید\n' +
+                  '• نور محیط را بهتر کنید\n' +
+                  '• از دکمه 🔄 استفاده کنید');
+        });
+        
+        // قابلیت زوم با دو انگشت
+        let initialDistance = 0;
+        let currentScale = 0.5;
+        
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2 && targetVisible && model) {
+                initialDistance = getDistance(e.touches[0], e.touches[1]);
+            }
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && targetVisible && model && initialDistance > 0) {
+                e.preventDefault();
+                const currentDistance = getDistance(e.touches[0], e.touches[1]);
+                const scaleDelta = (currentDistance - initialDistance) * 0.001;
+                currentScale = Math.max(0.2, Math.min(2, currentScale + scaleDelta));
+                model.setAttribute('scale', `${currentScale} ${currentScale} ${currentScale}`);
+                initialDistance = currentDistance;
             }
         }, { passive: false });
         
-        // مدیریت خطاهای احتمالی
-        window.addEventListener('error', (e) => {
-            console.error('Runtime error:', e);
-            if (!assetsLoaded) {
-                showError('خطا در بارگذاری. لطفاً صفحه را رفرش کنید.');
-            }
+        function getDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        // جلوگیری از رفرش با Pull-to-refresh
+        let startY = 0;
+        document.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
         });
         
-        // تایم‌اوت امنیتی
-        setTimeout(() => {
-            if (!assetsLoaded || !arSystemReady) {
-                console.warn('Loading timeout');
-                showError('بارگذاری طولانی شد. در حال تلاش مجدد...');
-                setTimeout(() => location.reload(), 3000);
+        document.addEventListener('touchmove', (e) => {
+            const y = e.touches[0].clientY;
+            if (y > startY && window.scrollY === 0) {
+                e.preventDefault();
             }
-        }, 30000);
+        }, { passive: false });
+        
+        // مدیریت خطاهای کلی
+        window.addEventListener('error', (e) => {
+            console.error('💥 Runtime error:', e);
+        });
+        
+        // حذف تایم‌اوت - اجازه بارگذاری نامحدود
+        console.log('🚀 AR App initialized - Large file mode enabled');
     </script>
 </body>
 </html>
