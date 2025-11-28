@@ -20,7 +20,7 @@
   <body>
     
     <div id="loading-screen">
-      <div>3در حال تنظیم دقیق مدل...</div>
+      <div>در حال تنظیم دقیق مدل...</div>
     </div>
 
     <a-scene 
@@ -41,11 +41,11 @@
 
       <a-entity mindar-image-target="targetIndex: 0">
         
-        <!-- انیمیشن چرخش دور محور Y -->
-        <a-entity id="y-rotation" animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
+        <!-- انیمیشن چرخش -->
+        <a-entity animation="property: rotation; to: 0 360 0; dur: 8000; easing: linear; loop: true">
           
-          <!-- تصحیح‌کننده Z-axis که در هر فریم اجرا میشه -->
-          <a-entity id="z-corrector" keep-upright>
+          <!-- تصحیح‌کننده که با world up vector کار می‌کنه -->
+          <a-entity id="upright-keeper" world-upright>
             
             <!-- مدل اصلی -->
             <a-gltf-model 
@@ -61,34 +61,41 @@
     </a-scene>
 
     <script>
-      // Component که مدل رو همیشه قائم نگه می‌داره
-      AFRAME.registerComponent('keep-upright', {
+      // Component پیشرفته که از world matrix استفاده می‌کنه
+      AFRAME.registerComponent('world-upright', {
         init: function() {
-          this.camera = document.querySelector('a-camera');
-          this.rotatingParent = document.getElementById('y-rotation');
+          this.worldUp = new THREE.Vector3(0, 1, 0); // بردار بالا در world space
+          this.targetUp = new THREE.Vector3();
+          this.targetRight = new THREE.Vector3();
+          this.targetForward = new THREE.Vector3();
+          this.correctionQuaternion = new THREE.Quaternion();
+          this.worldQuaternion = new THREE.Quaternion();
         },
 
         tick: function() {
-          if (!this.camera) return;
-
-          // گرفتن rotation دوربین
-          const cameraRotation = this.camera.object3D.rotation;
+          const object3D = this.el.object3D;
           
-          // محاسبه roll دوربین (چرخش دور محور Z)
-          // وقتی گوشی رو افقی می‌کنی، این عدد تغییر می‌کنه
-          const cameraRoll = cameraRotation.z * (180 / Math.PI); // تبدیل به درجه
+          // به‌روزرسانی world matrix
+          object3D.parent.updateMatrixWorld();
           
-          // گرفتن Y rotation از parent (انیمیشن چرخش)
-          const parentYRotation = this.rotatingParent ? 
-            this.rotatingParent.getAttribute('rotation').y : 0;
+          // گرفتن world quaternion از parent
+          object3D.parent.getWorldQuaternion(this.worldQuaternion);
           
-          // اعمال rotation معکوس برای نگه داشتن مدل قائم
-          // فقط Z رو تغییر میدیم، Y رو دست نمی‌زنیم چون انیمیشن داره
-          this.el.setAttribute('rotation', {
-            x: 0,
-            y: 0,
-            z: -cameraRoll  // معکوس roll دوربین
-          });
+          // محاسبه up vector در world space
+          this.targetUp.copy(this.worldUp).applyQuaternion(this.worldQuaternion);
+          
+          // محاسبه زاویه بین up vector فعلی و world up
+          const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.worldQuaternion);
+          
+          // پیدا کردن rotation که up vector رو به world up برمی‌گردونه
+          // استفاده از setFromUnitVectors برای محاسبه quaternion
+          this.correctionQuaternion.setFromUnitVectors(currentUp, this.worldUp);
+          
+          // اعمال correction به local rotation
+          const euler = new THREE.Euler().setFromQuaternion(this.correctionQuaternion);
+          
+          // فقط Z rotation رو اعمال می‌کنیم
+          object3D.rotation.z = euler.z;
         }
       });
 
@@ -104,4 +111,3 @@
     </script>
   </body>
 </html>
-
