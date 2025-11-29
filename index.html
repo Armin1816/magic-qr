@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Fixed Orientation</title>
+    <title>AR Animated Printer</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
+    
     <style>
       body { margin: 0; overflow: hidden; font-family: Tahoma, sans-serif; }
       #loading-screen {
@@ -22,14 +24,11 @@
     </style>
   </head>
   <body>
-    <!-- صفحه لودینگ -->
     <div id="loading-screen">
       <div>در حال آماده‌سازی واقعیت افزوده...</div>
-      <div style="font-size: 0.8em; margin-top: 10px; color: #ccc;">دوربین را روی تصویر هدف بگیرید</div>
     </div>
 
-    <!-- وضعیت نمایش -->
-    <div id="status">محورها فیکس روی QR 2کد | نورپردازی داینامیک</div>
+    <div id="status">نمایش انیمیشن پرینتر | AR</div>
 
     <a-scene 
       mindar-image="imageTargetSrc: ./targets.mind;" 
@@ -42,50 +41,23 @@
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
 
-      <!-- دوربین + نور متصل به دوربین (Headlight) -->
-      <!-- این نور باعث می‌شود وقتی دور سوژه می‌چرخید، سایه‌ها تغییر کنند و حس سه بعدی بدهد -->
       <a-camera position="0 0 0" look-controls="enabled: false">
         <a-light type="point" intensity="0.8" position="0 0 0" decay="0" distance="0"></a-light>
       </a-camera>
       
-      <!-- نور محیطی برای روشن کردن سایه‌ها -->
       <a-light type="ambient" intensity="0.6"></a-light>
 
       <a-entity mindar-image-target="targetIndex: 0">
         
-        <!-- ================================================== -->
-        <!-- سیستم مختصات گلوبال (ثابت روی کاغذ) -->
-        <!-- X (قرمز)، Y (سبز)، Z (آبی - عمود بر کاغذ) -->
-        <!-- ================================================== -->
-        <a-entity id="global-axes-system">
-            <a-box position="0.6 0 0" scale="1.2 0.01 0.01" color="red"></a-box>
-            <a-text value="X" position="1.3 0 0" color="red" align="center" scale="0.5 0.5 0.5"></a-text>
-
-            <a-box position="0 0.6 0" scale="0.01 1.2 0.01" color="green"></a-box>
-            <a-text value="Y" position="0 1.3 0" color="green" align="center" scale="0.5 0.5 0.5"></a-text>
-
-            <a-box position="0 0 0.6" scale="0.01 0.01 1.2" color="blue"></a-box>
-            <a-text value="Z" position="0 0 1.3" color="blue" align="center" scale="0.5 0.5 0.5"></a-text>
-        </a-entity>
-
-
-        <!-- ================================================== -->
-        <!-- کانتینر مدل -->
-        <!-- rotation="90 0 0": این تنظیم حیاتی است. -->
-        <!-- باعث می‌شود محور Y مدل (سر تا پا) هم‌راستا با محور Z صفحه (عمود) شود. -->
-        <!-- مدل دقیقا مثل یک ساختمان روی زمین (QR Code) می‌ایستد. -->
-        <!-- ================================================== -->
         <a-entity id="model-container" position="0 0 0" rotation="90 0 0">
             
-            <!-- دایره راهنما (کف زمین) -->
-            <!-- این دایره باید دقیقا روی QR Code بخوابد. اگر این دایره درست بود اما مدل کج بود، -->
-            <!-- مشکل از فایل مدل (glb) است که محورهایش استاندارد نیست. -->
             <a-circle radius="0.5" rotation="-90 0 0" color="white" opacity="0.2"></a-circle>
 
             <a-gltf-model 
               src="#avatarModel" 
               position="0 0 0" 
-              scale="3.5 3.5 3.5"> 
+              scale="3.5 3.5 3.5"
+              animation-mixer> 
             </a-gltf-model>
 
         </a-entity>
@@ -103,14 +75,3 @@
     </script>
   </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
