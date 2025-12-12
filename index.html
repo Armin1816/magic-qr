@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Animated Printer - Stable</title>
+    <title>AR Animated Printer</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
@@ -28,8 +28,9 @@
       <div>در حال آماده‌سازی واقعیت افزوده...</div>
     </div>
     <div id="status">نمایش انیمیشن پرینتر | AR</div>
+    
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 1000; warmupTolerance: 5; missTolerance: 5;" 
+      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 0.001;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
@@ -38,14 +39,19 @@
       <a-assets>
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
+
       <a-camera position="0 0 0" look-controls="enabled: false">
         <a-light type="point" intensity="0.8" position="0 0 0" decay="0" distance="0"></a-light>
       </a-camera>
       
       <a-light type="ambient" intensity="0.6"></a-light>
-      <a-entity id="target-anchor" mindar-image-target="targetIndex: 0">
-        <a-entity id="model-container" position="0 0 0" rotation="90 0 0" smooth-position>
+      
+      <a-entity mindar-image-target="targetIndex: 0">
+        
+        <a-entity id="model-container" position="0 0 0" rotation="90 0 0">
+            
             <a-circle radius="0.5" rotation="-90 0 0" color="white" opacity="0.2"></a-circle>
+            
             <a-gltf-model 
               src="#avatarModel" 
               position="0 0 0" 
@@ -55,76 +61,12 @@
         </a-entity>
       </a-entity>
     </a-scene>
-    
-    <script>
-      // کامپوننت Smoothing برای کاهش لرزش و تثبیت scale
-      AFRAME.registerComponent('smooth-position', {
-        schema: {
-          factor: {type: 'number', default: 0.15}
-        },
-        init: function() {
-          this.targetPosition = new THREE.Vector3();
-          this.targetRotation = new THREE.Euler();
-          this.targetScale = new THREE.Vector3();
-          this.currentPosition = new THREE.Vector3();
-          this.currentRotation = new THREE.Euler();
-          this.currentScale = new THREE.Vector3(1, 1, 1);
-          this.initialScale = new THREE.Vector3(1, 1, 1);
-          this.isFirstFrame = true;
-        },
-        tick: function() {
-          if (this.isFirstFrame) {
-            this.currentPosition.copy(this.el.object3D.position);
-            this.currentRotation.copy(this.el.object3D.rotation);
-            this.initialScale.copy(this.el.object3D.scale);
-            this.currentScale.copy(this.el.object3D.scale);
-            this.isFirstFrame = false;
-          }
-          
-          this.targetPosition.copy(this.el.object3D.position);
-          this.targetRotation.copy(this.el.object3D.rotation);
-          this.targetScale.copy(this.el.object3D.scale);
-          
-          // بررسی scale غیرعادی و جلوگیری از تغییرات ناگهانی
-          const scaleDiff = this.targetScale.distanceTo(this.currentScale);
-          if (scaleDiff > 0.5) {
-            // اگر تغییر scale خیلی زیاد بود، از scale فعلی استفاده کن
-            this.targetScale.copy(this.currentScale);
-          }
-          
-          // استفاده از lerp برای smooth کردن position
-          this.currentPosition.lerp(this.targetPosition, this.data.factor);
-          
-          // Smooth کردن rotation
-          this.currentRotation.x += (this.targetRotation.x - this.currentRotation.x) * this.data.factor;
-          this.currentRotation.y += (this.targetRotation.y - this.currentRotation.y) * this.data.factor;
-          this.currentRotation.z += (this.targetRotation.z - this.currentRotation.z) * this.data.factor;
-          
-          // Smooth کردن scale با factor کمتر برای جلوگیری از کشیدگی
-          this.currentScale.lerp(this.targetScale, this.data.factor * 0.5);
-          
-          this.el.object3D.position.copy(this.currentPosition);
-          this.el.object3D.rotation.copy(this.currentRotation);
-          this.el.object3D.scale.copy(this.currentScale);
-        }
-      });
 
+    <script>
       const scene = document.querySelector('a-scene');
       const loadingScreen = document.getElementById('loading-screen');
-      
       scene.addEventListener('loaded', () => { 
         setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); 
-      });
-      
-      // بهبود tracking با استفاده از event listeners
-      const targetAnchor = document.getElementById('target-anchor');
-      
-      targetAnchor.addEventListener('targetFound', () => {
-        console.log('هدف پیدا شد - Tracking فعال');
-      });
-      
-      targetAnchor.addEventListener('targetLost', () => {
-        console.log('هدف گم شد');
       });
     </script>
   </body>
