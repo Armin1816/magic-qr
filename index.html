@@ -27,11 +27,9 @@
     <div id="loading-screen">
       <div>در حال آماده‌سازی واقعیت افزوده...</div>
     </div>
-
     <div id="status">نمایش انیمیشن پرینتر | AR</div>
-
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind;" 
+      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 0.01;" 
       color-space="sRGB" 
       renderer="colorManagement: true, physicallyCorrectLights" 
       vr-mode-ui="enabled: false" 
@@ -40,35 +38,73 @@
       <a-assets>
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
-
       <a-camera position="0 0 0" look-controls="enabled: false">
         <a-light type="point" intensity="0.8" position="0 0 0" decay="0" distance="0"></a-light>
       </a-camera>
       
       <a-light type="ambient" intensity="0.6"></a-light>
-
       <a-entity mindar-image-target="targetIndex: 0">
         
-        <a-entity id="model-container" position="0 0 0" rotation="90 0 0">
+        <a-entity id="model-container" position="0 0 0" rotation="90 0 0" stable-tracking>
             
             <a-circle radius="0.5" rotation="-90 0 0" color="white" opacity="0.2"></a-circle>
-
             <a-gltf-model 
               src="#avatarModel" 
               position="0 0 0" 
               scale="3.5 3.5 3.5"
               animation-mixer> 
             </a-gltf-model>
-
         </a-entity>
-
       </a-entity>
     </a-scene>
-
     <script>
+      // کامپوننت برای کاهش لرزش جزئی (فقط لرزش‌های کوچک)
+      AFRAME.registerComponent('stable-tracking', {
+        init: function() {
+          this.prevPosition = new THREE.Vector3();
+          this.prevRotation = new THREE.Euler();
+          this.smoothPosition = new THREE.Vector3();
+          this.smoothRotation = new THREE.Euler();
+          this.isFirstFrame = true;
+        },
+        tick: function() {
+          const obj = this.el.object3D;
+          
+          if (this.isFirstFrame) {
+            this.prevPosition.copy(obj.position);
+            this.prevRotation.copy(obj.rotation);
+            this.smoothPosition.copy(obj.position);
+            this.smoothRotation.copy(obj.rotation);
+            this.isFirstFrame = false;
+            return;
+          }
+          
+          // فقط لرزش‌های خیلی کوچک رو smooth می‌کنیم
+          const positionDelta = obj.position.distanceTo(this.prevPosition);
+          
+          // اگر حرکت بزرگه (نزدیک/دور شدن یا چرخیدن دور مدل) اجازه بده آزادانه حرکت کنه
+          if (positionDelta > 0.01) {
+            // حرکت بزرگ - بدون smooth
+            this.smoothPosition.copy(obj.position);
+            this.smoothRotation.copy(obj.rotation);
+          } else {
+            // لرزش کوچک - smooth کن
+            this.smoothPosition.lerp(obj.position, 0.3);
+            this.smoothRotation.x += (obj.rotation.x - this.smoothRotation.x) * 0.3;
+            this.smoothRotation.y += (obj.rotation.y - this.smoothRotation.y) * 0.3;
+            this.smoothRotation.z += (obj.rotation.z - this.smoothRotation.z) * 0.3;
+            
+            obj.position.copy(this.smoothPosition);
+            obj.rotation.copy(this.smoothRotation);
+          }
+          
+          this.prevPosition.copy(obj.position);
+          this.prevRotation.copy(obj.rotation);
+        }
+      });
+
       const scene = document.querySelector('a-scene');
       const loadingScreen = document.getElementById('loading-screen');
-
       scene.addEventListener('loaded', () => { 
         setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); 
       });
