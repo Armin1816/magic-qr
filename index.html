@@ -27,87 +27,50 @@
     <div id="loading-screen">
       <div>در حال آماده‌سازی واقعیت افزوده...</div>
     </div>
+
     <div id="status">نمایش انیمیشن پرینتر | AR</div>
+
     <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 1000; warmupTolerance: 5; missTolerance: 5;" 
+      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 0.001; missTolerance: 10; warmupTolerance: 5;" 
       color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
+      renderer="colorManagement: true, physicallyCorrectLights, highRefreshRate: true, antialias: true" 
       vr-mode-ui="enabled: false" 
       device-orientation-permission-ui="enabled: false">
       
       <a-assets>
         <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
       </a-assets>
+
       <a-camera position="0 0 0" look-controls="enabled: false">
         <a-light type="point" intensity="0.8" position="0 0 0" decay="0" distance="0"></a-light>
       </a-camera>
       
       <a-light type="ambient" intensity="0.6"></a-light>
-      <a-entity id="target-anchor" mindar-image-target="targetIndex: 0">
-        <a-entity id="model-container" position="0 0 0" rotation="90 0 0" smooth-position>
+
+      <a-entity mindar-image-target="targetIndex: 0">
+        
+        <a-entity id="model-container" position="0 0 0" rotation="90 0 0">
+            
             <a-circle radius="0.5" rotation="-90 0 0" color="white" opacity="0.2"></a-circle>
+
             <a-gltf-model 
               src="#avatarModel" 
               position="0 0 0" 
               scale="3.5 3.5 3.5"
               animation-mixer> 
             </a-gltf-model>
+
         </a-entity>
+
       </a-entity>
     </a-scene>
-    
-    <script>
-      // کامپوننت Smoothing برای کاهش لرزش
-      AFRAME.registerComponent('smooth-position', {
-        schema: {
-          factor: {type: 'number', default: 0.15}
-        },
-        init: function() {
-          this.targetPosition = new THREE.Vector3();
-          this.targetRotation = new THREE.Euler();
-          this.currentPosition = new THREE.Vector3();
-          this.currentRotation = new THREE.Euler();
-          this.isFirstFrame = true;
-        },
-        tick: function() {
-          if (this.isFirstFrame) {
-            this.currentPosition.copy(this.el.object3D.position);
-            this.currentRotation.copy(this.el.object3D.rotation);
-            this.isFirstFrame = false;
-          }
-          
-          this.targetPosition.copy(this.el.object3D.position);
-          this.targetRotation.copy(this.el.object3D.rotation);
-          
-          // استفاده از lerp برای smooth کردن position
-          this.currentPosition.lerp(this.targetPosition, this.data.factor);
-          
-          // Smooth کردن rotation
-          this.currentRotation.x += (this.targetRotation.x - this.currentRotation.x) * this.data.factor;
-          this.currentRotation.y += (this.targetRotation.y - this.currentRotation.y) * this.data.factor;
-          this.currentRotation.z += (this.targetRotation.z - this.currentRotation.z) * this.data.factor;
-          
-          this.el.object3D.position.copy(this.currentPosition);
-          this.el.object3D.rotation.copy(this.currentRotation);
-        }
-      });
 
+    <script>
       const scene = document.querySelector('a-scene');
       const loadingScreen = document.getElementById('loading-screen');
-      
+
       scene.addEventListener('loaded', () => { 
         setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); 
-      });
-      
-      // بهبود tracking با استفاده از event listeners
-      const targetAnchor = document.getElementById('target-anchor');
-      
-      targetAnchor.addEventListener('targetFound', () => {
-        console.log('هدف پیدا شد - Tracking فعال');
-      });
-      
-      targetAnchor.addEventListener('targetLost', () => {
-        console.log('هدف گم شد');
       });
     </script>
   </body>
