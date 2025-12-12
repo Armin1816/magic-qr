@@ -1,105 +1,237 @@
 <!DOCTYPE html>
 <html lang="fa">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AR Animated Printer</title>
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
-    
-    <style>
-      body { margin: 0; overflow: hidden; font-family: Tahoma, sans-serif; }
-      #loading-screen {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background-color: #000; z-index: 9999;
-        display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AR Animated Printer — پایدارسازی</title>
+
+  <!-- A-Frame + MindAR -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.4.0/dist/aframe-extras.min.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Tahoma, sans-serif; }
+    #loading-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: #000; z-index: 9999;
+      display: flex; flex-direction: column; justify-content: center; align-items: center; color: white;
+    }
+    .hidden { display: none !important; }
+    #status {
+      position: absolute; bottom: 20px; left: 0; width: 100%;
+      text-align: center; color: white; z-index: 10; font-weight: bold;
+      text-shadow: 1px 1px 2px black; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-screen">
+    <div>در حال آماده‌سازی واقعیت افزوده...</div>
+  </div>
+
+  <div id="status">نمایش انیمیشن پرینتر | AR</div>
+
+  <!-- scene -->
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: true;"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false"
+    embedded>
+
+    <a-assets>
+      <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
+    </a-assets>
+
+    <!-- Camera (غیرقابل‌جهت‌یابی توسط کاربر؛ حرکت واقعی دوربین از فیزیک گوشی است) -->
+    <a-camera id="camera" position="0 0 0" look-controls="enabled: false">
+      <a-light type="point" intensity="0.8" position="0 0 0" decay="0" distance="0"></a-light>
+    </a-camera>
+
+    <a-light type="ambient" intensity="0.6"></a-light>
+
+    <!-- نگهدارنده هدف (این entity توسط MindAR به‌روزرسانی می‌شود) -->
+    <a-entity id="mindar-target" mindar-image-target="targetIndex: 0"></a-entity>
+
+    <!-- مدل واقعی را خارج از گره هدف قرار می‌دهیم و با اسکریپت مختصات جهانی هدف را به صورت صاف (smoothed) می‌گیریم -->
+    <a-entity id="smoothed-model-root" visible="false">
+      <!-- دایره زیر مدل -->
+      <a-circle id="base-circle"
+                radius="0.5"
+                rotation="-90 0 0"
+                color="white"
+                opacity="0.2"
+                position="0 0 0">
+      </a-circle>
+
+      <!-- خود مدل؛ animation-mixer را نگه داشته‌ایم -->
+      <a-gltf-model id="printer-model"
+                    src="#avatarModel"
+                    position="0 0 0"
+                    scale="3.5 3.5 3.5"
+                    animation-mixer>
+      </a-gltf-model>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+    // تنظیمات smoothing — این پارامترها را برای سخت‌تر یا نرم‌تر کردن smoothing تغییر بده
+    const SMOOTHING_WINDOW = 6;      // تعداد فریم‌هایی که موقعیت/چرخش میانگین گرفته می‌شود (بیشتر => نرم‌تر)
+    const ROTATION_SLERP_SPEED = 0.2; // سرعت slerp برای چرخش (0..1) — بزرگ‌تر => سریعتر دنبال می‌کند
+    const POSITION_LERP_ALPHA = 0.25; // مقدار lerp برای موقعیت (0..1) — بزرگ‌تر => سریعتر دنبال می‌کند
+
+    const scene = document.querySelector('a-scene');
+    const loadingScreen = document.getElementById('loading-screen');
+    const status = document.getElementById('status');
+
+    // entityها
+    const mindarTarget = document.getElementById('mindar-target');
+    const smoothedRoot = document.getElementById('smoothed-model-root');
+    const modelEntity = document.getElementById('printer-model');
+    const baseCircle = document.getElementById('base-circle');
+
+    // buffer برای محاسبه میانگین
+    const posBuffer = [];
+    const quatBuffer = [];
+
+    // وضعیت دنبال‌شدن
+    let targetIsVisible = false;
+    let lastKnownPos = new THREE.Vector3();
+    let lastKnownQuat = new THREE.Quaternion();
+
+    // هنگامی که صحنه لود شد، مخفی کردن صفحه لودینگ
+    scene.addEventListener('loaded', () => {
+      setTimeout(() => { loadingScreen.classList.add('hidden'); }, 800);
+    });
+
+    // events از mindar: targetFound / targetLost
+    // mindar-image-target Entityها eventهایی تولید می‌کنند؛ به آن گوش می‌دهیم
+    mindarTarget.addEventListener('targetFound', () => {
+      targetIsVisible = true;
+      smoothedRoot.setAttribute('visible', 'true');
+      status.innerText = 'هدف پیدا شد — مدل لنگرگرفته شد';
+    });
+
+    mindarTarget.addEventListener('targetLost', () => {
+      targetIsVisible = false;
+      // هنگام از دست رفتن هدف: برای جلوگیری از پرش ناگهانی، مدل در آخرین مختصات باقی می‌ماند
+      // (اگر می‌خواهی مدل مخفی شود: smoothedRoot.setAttribute('visible','false');)
+      status.innerText = 'هدف از دست رفت — مدل در آخرین مکان باقی می‌ماند';
+    });
+
+    // تابع کمک: اضافه کردن مقدار به بافر و حفظ طول ثابت
+    function pushBuffer(buf, item, maxLen) {
+      buf.push(item.clone ? item.clone() : item);
+      if (buf.length > maxLen) buf.shift();
+    }
+
+    // میانگین موقعیت‌ها (arithmetic mean)
+    function averagePosition(buffer) {
+      const avg = new THREE.Vector3(0,0,0);
+      if (buffer.length === 0) return avg;
+      buffer.forEach(v => avg.add(v));
+      avg.multiplyScalar(1 / buffer.length);
+      return avg;
+    }
+
+    // میانگین چرخش: از slerp تدریجی استفاده می‌کنیم (انتخابی)
+    // برای میانگین بهتر می‌توان از روش‌های پیچیده‌تر استفاده کرد؛ این روش قابل اعتماد و سریع است
+    function averageQuaternion(buffer) {
+      if (buffer.length === 0) return new THREE.Quaternion();
+      // شروع با اولین کواترنیون سپس به تدریج باقیمانده را slerp می‌کنیم
+      const avg = buffer[0].clone();
+      for (let i = 1; i < buffer.length; i++) {
+        avg.slerp(buffer[i], 1 / (i + 1)); // وزن کمتر برای عناصر بعدی
       }
-      .hidden { display: none !important; }
-      #status {
-        position: absolute; bottom: 20px; left: 0; width: 100%;
-        text-align: center; color: white; z-index: 10; font-weight: bold;
-        text-shadow: 1px 1px 2px black; pointer-events: none;
+      return avg;
+    }
+
+    // تابعی برای به‌دست آوردن مختصات جهانی گره هدف
+    function getTargetWorldTransform() {
+      const targetObj = mindarTarget.object3D;
+      const worldPos = new THREE.Vector3();
+      const worldQuat = new THREE.Quaternion();
+      const worldScale = new THREE.Vector3();
+
+      // اگر target object3D ماتریس جهانی دارد:
+      targetObj.updateWorldMatrix(true, false);
+      targetObj.getWorldPosition(worldPos);
+      targetObj.getWorldQuaternion(worldQuat);
+      targetObj.getWorldScale(worldScale);
+
+      return { pos: worldPos, quat: worldQuat, scale: worldScale };
+    }
+
+    // tick loop smoothing: این کد را به صورت requestAnimationFrame اجرا می‌کنیم
+    function smoothingLoop() {
+      // اگر هدف تاکنون حداقل یک‌بار پیداشده باشد، مختصات جهانی را بخوان
+      if (targetIsVisible) {
+        const { pos, quat, scale } = getTargetWorldTransform();
+
+        // push در بافرها
+        pushBuffer(posBuffer, pos, SMOOTHING_WINDOW);
+        pushBuffer(quatBuffer, quat, SMOOTHING_WINDOW);
+
+        // محاسبه میانگین
+        const avgPos = averagePosition(posBuffer);
+        const avgQuat = averageQuaternion(quatBuffer);
+
+        // ذخیره به عنوان آخرین مختصات شناخته‌شده
+        lastKnownPos.copy(avgPos);
+        lastKnownQuat.copy(avgQuat);
+
+        // مدل را در مختصات جهانی نرم‌شده قرار بده (smoothedRoot تحت scene است)
+        // برای تنظیم مختصات جهانی روی یک entity که مستقیماً child از scene است، می‌توانیم موقعیت و کواترنیون آن را مستقیم set کنیم.
+        smoothedRoot.object3D.position.lerp(avgPos, POSITION_LERP_ALPHA);
+        smoothedRoot.object3D.quaternion.slerp(avgQuat, ROTATION_SLERP_SPEED);
+
+        // در صورت نیاز مقیاس را هم تنظیم کن (در اینجا از scale هدف استفاده شده)
+        smoothedRoot.object3D.scale.lerp(scale, 0.15);
+
+      } else {
+        // اگر هدف از دست رفته است، مدل در lastKnown باقی می‌ماند؛ می‌توانیم اندکی پایدارسازی انجام دهیم
+        smoothedRoot.object3D.position.lerp(lastKnownPos, POSITION_LERP_ALPHA);
+        smoothedRoot.object3D.quaternion.slerp(lastKnownQuat, ROTATION_SLERP_SPEED);
       }
-    </style>
-  </head>
-  <body>
-    <div id="loading-screen">
-      <div>در حال آماده‌سازی واقعیت افزوده...</div>
-    </div>
 
-    <div id="status">نمایش انیمیشن پرینتر | AR</div>
+      // ادامه حلقه
+      requestAnimationFrame(smoothingLoop);
+    }
 
-    <a-scene 
-      mindar-image="imageTargetSrc: ./targets.mind; filterMinCF: 0.0001; filterBeta: 0.001" 
-      color-space="sRGB" 
-      renderer="colorManagement: true, physicallyCorrectLights" 
-      vr-mode-ui="enabled: false" 
-      device-orientation-permission-ui="enabled: false">
-      
-      <a-assets>
-        <a-asset-item id="avatarModel" src="./model.glb"></a-asset-item>
-      </a-assets>
+    // ابتدا مدل را به صحنه attach کن (در HTML همین کار شد: smoothed-model-root خارج از target)
+    // اما لازم است مطمئن شویم که transform های سه‌بعدی قابل استفاده‌اند
+    // وقتی scene آماده شد، loop را شروع کن
+    scene.addEventListener('renderstart', () => {
+      // مقداردهی اولیه lastKnown (اگر هدف هنوز پیدا نشده باشد، مدل پنهان است)
+      lastKnownPos.set(0, 0, 0);
+      lastKnownQuat.identity();
+      // اگر می‌خواهی مدل از ابتدا پنهان باشد تا زمانی که target پیدا شود:
+      smoothedRoot.setAttribute('visible', 'false');
 
-      <a-camera position="0 0 0" look-controls="enabled: false">
-        <a-light type="point" intensity="0.8" position="0 0 0" decay="0" distance="0"></a-light>
-      </a-camera>
-      
-      <a-light type="ambient" intensity="0.6"></a-light>
+      requestAnimationFrame(smoothingLoop);
+    });
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        
-        <a-entity id="model-container" position="0 0 0" rotation="90 0 0">
-          
-          <a-circle radius="0.5" rotation="-90 0 0" color="white" opacity="0.2"></a-circle>
+    // --- تنظیمات اضافی برای هم‌ترازی مدل (اگر مدل از روی صفحه بلند می‌شود)
+    // بعضی فایل‌های glb origin مناسبی ندارند؛ اگر مدل روی محور Y جابجا است، این‌جا offset بده
+    // می‌توانی مقدار yOffset را تغییر دهی تا مدل دقیقاً روی QR قرار گیرد (مثلاً -0.02 متر).
+    const yOffset = 0; // متر، اگر مدل بالا/پایین است این را تنظیم کن
+    modelEntity.addEventListener('model-loaded', () => {
+      // اگر لازم است تغییر موقعیت محلی انجام شود:
+      modelEntity.object3D.position.set(0, yOffset, 0);
+      // اگر مدل نیاز به چرخش اولیه دارد که در نسخه قبلی داشتید، می‌توانی اینجا اعمال کنی:
+      // modelEntity.object3D.rotation.x = THREE.MathUtils.degToRad(90); // اگر قبلاً rotation="90 0 0" داشتید
+      // به جای آن ترجیح دادم rotation صفر نگه داریم تا کنترل از طریق smoothedRoot انجام شود.
+    });
 
-          <a-gltf-model 
-            src="#avatarModel" 
-            position="0 0 0" 
-            scale="3.5 3.5 3.5"
-            animation-mixer> 
-          </a-gltf-model>
+    // اطلاع در مورد کالیبراسیون / پارامترها برای تو
+    console.log('پارامترهای smoothing: window=', SMOOTHING_WINDOW,
+                ' positionLerp=', POSITION_LERP_ALPHA, ' rotSlerp=', ROTATION_SLERP_SPEED);
 
-        </a-entity>
-
-      </a-entity>
-    </a-scene>
-
-    <script>
-      const scene = document.querySelector('a-scene');
-      const loadingScreen = document.getElementById('loading-screen');
-
-      scene.addEventListener('loaded', () => { 
-        setTimeout(() => { loadingScreen.classList.add('hidden'); }, 1000); 
-      });
-
-      // Add custom smoothing for model position to reduce jitter
-      AFRAME.registerComponent('smooth-target', {
-        init: function () {
-          this.target = this.el;
-          this.smoothedPosition = new THREE.Vector3();
-          this.smoothedRotation = new THREE.Quaternion();
-          this.lerpFactor = 0.1; // Adjust for more/less smoothing
-        },
-        tick: function () {
-          const currentPosition = this.target.object3D.position;
-          const currentRotation = this.target.object3D.quaternion;
-
-          this.smoothedPosition.lerp(currentPosition, this.lerpFactor);
-          this.smoothedRotation.slerp(currentRotation, this.lerpFactor);
-
-          this.target.object3D.position.copy(this.smoothedPosition);
-          this.target.object3D.quaternion.copy(this.smoothedRotation);
-        }
-      });
-
-      // Apply the smooth-target component to the model container
-      document.addEventListener('DOMContentLoaded', () => {
-        const modelContainer = document.getElementById('model-container');
-        if (modelContainer) {
-          modelContainer.setAttribute('smooth-target', '');
-        }
-      });
-    </script>
-  </body>
+    // نکته: اگر مدل هنوز به نظر "کمابیش شناور" است، مقدار SMOOTHING_WINDOW یا POSITION_LERP_ALPHA را کاهش بده (سریعتر)
+    // یا اگر حرکت خیلی پرش است، SMOOTHING_WINDOW را افزایش بده (نرم‌تر).
+  </script>
+</body>
 </html>
